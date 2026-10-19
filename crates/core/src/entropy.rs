@@ -37,6 +37,29 @@ pub fn block_entropy(bytes: &[u8], block_size: usize) -> Vec<f64> {
     bytes.chunks(block_size).map(shannon_entropy).collect()
 }
 
+/// Like [`block_entropy`], one value per `step` bytes — but each value is measured over a
+/// `window` of bytes centred on that step.
+///
+/// Why: a run of `n` bytes can hold at most `n` distinct values, so its entropy can never
+/// exceed log2(n). A 64-byte block of perfectly random data maxes out at 6.0, and would be
+/// drawn like ordinary code instead of the encrypted data it is. A wider window fixes the
+/// measurement while keeping the fine `step` resolution for drawing.
+pub fn windowed_entropy(bytes: &[u8], step: usize, window: usize) -> Vec<f64> {
+    assert!(step > 0, "step must be > 0");
+    if window <= step {
+        return block_entropy(bytes, step);
+    }
+    let half = (window - step) / 2;
+    (0..bytes.len().div_ceil(step))
+        .map(|i| {
+            // Centre the window on this step, then slide it back inside the file at the edges.
+            let start = (i * step).saturating_sub(half).min(bytes.len().saturating_sub(window));
+            let end = (start + window).min(bytes.len());
+            shannon_entropy(&bytes[start..end])
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -61,6 +84,39 @@ mod tests {
     fn two_values_evenly_is_one() {
         let data: Vec<u8> = (0..1000).map(|i| if i % 2 == 0 { 0 } else { 1 }).collect();
         assert!((shannon_entropy(&data) - 1.0).abs() < 1e-9);
+    }
+
+    /// Deterministic pseudo-random bytes (xorshift), so tests don't need a `rand` dependency.
+    fn noise(len: usize) -> Vec<u8> {
+        let mut x: u32 = 0x9E37_79B9;
+        (0..len)
+            .map(|_| {
+                x ^= x << 13;
+                x ^= x >> 17;
+                x ^= x << 5;
+                (x >> 24) as u8
+            })
+            .collect()
+    }
+
+    #[test]
+    fn small_blocks_cannot_see_randomness() {
+        // The bug windowed_entropy exists to fix: 64 bytes can't score above log2(64) = 6.
+        let blocks = block_entropy(&noise(64 * 100), 64);
+        assert!(blocks.iter().all(|&e| e <= 6.0 + 1e-9));
+    }
+
+    #[test]
+    fn windows_reveal_randomness_at_fine_steps() {
+        let values = windowed_entropy(&noise(64 * 100), 64, 4096);
+        assert_eq!(values.len(), 100); // still one value per 64-byte step
+        assert!(values.iter().all(|&e| e > 7.9), "random data should read close to 8");
+    }
+
+    #[test]
+    fn window_never_exceeds_input() {
+        let values = windowed_entropy(&noise(300), 64, 4096);
+        assert_eq!(values.len(), 5);
     }
 
     #[test]

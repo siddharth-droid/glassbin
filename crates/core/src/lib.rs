@@ -7,6 +7,6 @@ pub mod entropy;
 pub mod format;
 pub mod strings;
 
-pub use entropy::{block_entropy, shannon_entropy};
+pub use entropy::{block_entropy, shannon_entropy, windowed_entropy};
 pub use format::{parse, BinaryInfo, Format, Import, ParseError, Section};
 pub use strings::{drop_repeated, extract_strings, is_meaningful, FoundString};

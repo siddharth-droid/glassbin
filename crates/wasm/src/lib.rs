@@ -2,13 +2,16 @@
 //! call `analyze(bytes)` like a normal JS function — the file never leaves the user's machine.
 
 use binscope_core::{
-    block_entropy, drop_repeated, extract_strings, is_meaningful, parse, shannon_entropy, BinaryInfo, FoundString,
+    drop_repeated, extract_strings, is_meaningful, parse, shannon_entropy, windowed_entropy, BinaryInfo, FoundString,
 };
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
 /// Aim for about this many cells in the entropy heatmap, whatever the file size.
 const TARGET_BLOCKS: usize = 4096;
+/// Measure each cell over at least this many bytes. Fewer bytes cap entropy at log2(n),
+/// so random data in small cells would look like plain code (see `windowed_entropy`).
+const MIN_WINDOW: usize = 2048;
 const MIN_STRING_LEN: usize = 6;
 /// A string seen more often than this is a code pattern, not text.
 const MAX_REPEATS: usize = 3;
@@ -56,7 +59,7 @@ pub fn analyze(bytes: &[u8]) -> Result<JsValue, JsError> {
         entropy: shannon_entropy(bytes),
         block_size,
         // f32 is plenty of precision for drawing, and halves the data crossing into JS.
-        blocks: block_entropy(bytes, block_size).into_iter().map(|e| e as f32).collect(),
+        blocks: windowed_entropy(bytes, block_size, block_size.max(MIN_WINDOW)).into_iter().map(|e| e as f32).collect(),
         binary,
         parse_error,
         string_count,

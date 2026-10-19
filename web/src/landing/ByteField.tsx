@@ -2,6 +2,7 @@ import { useEffect, useRef, type RefObject } from 'react'
 import type { Report } from '../types'
 import { entropyRgb } from '../lib/format'
 import { ScrollTrigger, prefersReducedMotion } from '../lib/motion'
+import { observeWidth } from '../lib/observeWidth'
 
 interface Props {
   bytes: Uint8Array
@@ -112,8 +113,7 @@ export function ByteField({ bytes, report, triggerRef }: Props) {
       if (!raf) raf = requestAnimationFrame(draw)
     }
 
-    const ro = new ResizeObserver(layout)
-    ro.observe(canvas.parentElement!)
+    const stopObserving = observeWidth(canvas.parentElement!, layout)
     // The canvas font comes from a webfont; redraw once it has loaded.
     document.fonts.ready.then(requestDraw)
 
@@ -145,7 +145,7 @@ export function ByteField({ bytes, report, triggerRef }: Props) {
     }
 
     return () => {
-      ro.disconnect()
+      stopObserving()
       st?.kill()
       cancelAnimationFrame(raf)
       canvas.removeEventListener('pointermove', onMove)

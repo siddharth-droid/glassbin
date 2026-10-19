@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react'
 import type { ByteRange, Section } from '../types'
 import { entropyColor, entropyLabel, hex, sectionAt } from '../lib/format'
+import { observeWidth } from '../lib/observeWidth'
 
 interface Props {
   blocks: number[]
@@ -95,12 +96,7 @@ export function EntropyMap({ blocks, blockSize, sections, highlight, minCellPx =
 
   // Narrow screens get fewer, taller rows instead of microscopic cells.
   useEffect(() => {
-    const wrap = wrapRef.current!
-    const ro = new ResizeObserver(([entry]) =>
-      setMaxCols(Math.max(16, Math.floor(entry.contentRect.width / minCellPx))),
-    )
-    ro.observe(wrap)
-    return () => ro.disconnect()
+    return observeWidth(wrapRef.current!, (width) => setMaxCols(Math.max(16, Math.floor(width / minCellPx))))
   }, [minCellPx])
 
   const cols = Math.min(columnsFor(blocks.length), maxCols)
@@ -153,8 +149,7 @@ export function EntropyMap({ blocks, blockSize, sections, highlight, minCellPx =
       canvas.height = Math.round(((w * rows) / cols) * dpr)
       gl.viewport(0, 0, canvas.width, canvas.height)
     }
-    const ro = new ResizeObserver(resize)
-    ro.observe(canvas)
+    const stopObserving = observeWidth(canvas, resize)
     resize()
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -178,7 +173,7 @@ export function EntropyMap({ blocks, blockSize, sections, highlight, minCellPx =
 
     return () => {
       cancelAnimationFrame(raf)
-      ro.disconnect()
+      stopObserving()
       gl.deleteTexture(tex)
       gl.deleteBuffer(buf)
       gl.deleteProgram(prog)
