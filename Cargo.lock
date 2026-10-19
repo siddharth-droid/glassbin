@@ -3,31 +3,6 @@
 version = 4
 
 [[package]]
-name = "binscope"
-version = "0.1.0"
-dependencies = [
- "binscope-core",
-]
-
-[[package]]
-name = "binscope-core"
-version = "0.1.0"
-dependencies = [
- "goblin",
- "serde",
-]
-
-[[package]]
-name = "binscope-wasm"
-version = "0.1.0"
-dependencies = [
- "binscope-core",
- "serde",
- "serde-wasm-bindgen",
- "wasm-bindgen",
-]
-
-[[package]]
 name = "bumpalo"
 version = "3.20.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -38,6 +13,16 @@ name = "cfg-if"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600"
+
+[[package]]
+name = "console_error_panic_hook"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a06aeb73f470f66dcdbf7223caeebb85984942f22f1adb2a088cf9668146bbbc"
+dependencies = [
+ "cfg-if",
+ "wasm-bindgen",
+]
 
 [[package]]
 name = "futures-core"
@@ -61,6 +46,32 @@ dependencies = [
  "futures-task",
  "pin-project-lite",
  "slab",
+]
+
+[[package]]
+name = "glassbin"
+version = "0.1.0"
+dependencies = [
+ "glassbin-core",
+]
+
+[[package]]
+name = "glassbin-core"
+version = "0.1.0"
+dependencies = [
+ "goblin",
+ "serde",
+]
+
+[[package]]
+name = "glassbin-wasm"
+version = "0.1.0"
+dependencies = [
+ "console_error_panic_hook",
+ "glassbin-core",
+ "serde",
+ "serde-wasm-bindgen",
+ "wasm-bindgen",
 ]
 
 [[package]]

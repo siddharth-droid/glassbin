@@ -25,7 +25,7 @@ export function Landing({ sample, onOpen, onSample }: Props) {
   useGSAP(
     () => {
       if (prefersReducedMotion()) return
-      // The headline decodes out of hex, the way binscope turns bytes into meaning.
+      // The headline decodes out of hex, the way glassbin turns bytes into meaning.
       const h1 = rootRef.current!.querySelector('h1')!
       gsap.to(h1, {
         duration: 1.4,
@@ -51,7 +51,7 @@ export function Landing({ sample, onOpen, onSample }: Props) {
       <header className="nav">
         <a className="wordmark" href="#top">
           <Glyph />
-          binscope
+          glassbin
         </a>
         <nav aria-label="Sections">
           <a href="#how">How it reads a file</a>
@@ -69,7 +69,7 @@ export function Landing({ sample, onOpen, onSample }: Props) {
         </h1>
         <div className="hero-body">
           <p className="lede">
-            Drop in any Windows, Linux or macOS executable. binscope maps its sections, imports, strings and
+            Drop in any Windows, Linux or macOS executable. glassbin maps its sections, imports, strings and
             entropy right here in the tab. It's written in Rust, compiled to WebAssembly, and your file is
             never uploaded.
           </p>
@@ -117,13 +117,13 @@ export function Landing({ sample, onOpen, onSample }: Props) {
         <div className="block-head">
           <h2>One Rust engine, three ways in</h2>
           <p>
-            All the analysis lives in one library, <code>binscope-core</code>. Everything else is a thin shell around
+            All the analysis lives in one library, <code>glassbin-core</code>. Everything else is a thin shell around
             it, so the browser, the terminal and the server always agree.
           </p>
         </div>
         <div className="engine-diagram">
           <div className="engine-core">
-            <code className="engine-name">binscope-core</code>
+            <code className="engine-name">glassbin-core</code>
             <pre className="engine-sig">
               <code>{'pub fn parse(bytes: &[u8])\n  -> Result<BinaryInfo, ParseError>'}</code>
             </pre>
@@ -141,7 +141,7 @@ export function Landing({ sample, onOpen, onSample }: Props) {
             </li>
             <li>
               <strong>Your terminal</strong>
-              <span>The <code>binscope</code> CLI prints the same report, ready for scripts and CI.</span>
+              <span>The <code>glassbin</code> CLI prints the same report, ready for scripts and CI.</span>
             </li>
             <li>
               <strong>A server</strong>
@@ -185,7 +185,7 @@ export function Landing({ sample, onOpen, onSample }: Props) {
       </section>
 
       <footer className="footer">
-        <span>binscope is open source under the MIT licence.</span>
+        <span>glassbin is open source under the MIT licence.</span>
         <span>Built with Rust, goblin, wasm-bindgen, React, WebGL and GSAP.</span>
       </footer>
     </div>
@@ -193,11 +193,11 @@ export function Landing({ sample, onOpen, onSample }: Props) {
 }
 
 const INSTALL = `git clone ${REPO_URL}
-cargo install --path binscope/crates/cli
-binscope ./program.exe`
+cargo install --path glassbin/crates/cli
+glassbin ./program.exe`
 
 // Real output from running the CLI on the sample binary, trimmed.
-const OUTPUT = `file      binscope.exe
+const OUTPUT = `file      glassbin.exe
 size      557568 bytes
 entropy   6.310 bits/byte
 format    PE (Windows) · X86_64 · 64-bit

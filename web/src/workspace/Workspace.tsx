@@ -40,7 +40,7 @@ export function Workspace({ name, report, ms, onOpen, onHome }: Props) {
       <header className="nav nav--workspace">
         <button className="wordmark" onClick={onHome}>
           <Glyph />
-          binscope
+          glassbin
         </button>
         <button className="btn btn--small" onClick={onOpen}>
           Open another file

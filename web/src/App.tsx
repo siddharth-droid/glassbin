@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { analyzeBytes, analyzeFile, loadWasm, type Analysis } from './lib/wasm'
+import { AnalysisError, analyzeBytes, analyzeFile, loadWasm, type Analysis } from './lib/wasm'
 import { SAMPLE_NAME, SAMPLE_URL } from './lib/site'
 import { Landing, type Sample } from './landing/Landing'
 import { Workspace } from './workspace/Workspace'
@@ -45,7 +45,11 @@ export default function App() {
         show({ kind: 'report', name, ...analysis })
         if (location.hash !== '#report') history.pushState(null, '', '#report')
       } catch (e) {
-        show({ kind: 'error', message: e instanceof Error ? e.message : String(e) })
+        const message =
+          e instanceof AnalysisError
+            ? e.message
+            : `Couldn't analyze that file: ${e instanceof Error ? e.message : String(e)}`
+        show({ kind: 'error', message })
       }
     },
     [show],
@@ -118,7 +122,7 @@ export default function App() {
       {view.kind === 'busy' && <div className="status">Reading {view.name}…</div>}
       {view.kind === 'error' && (
         <div className="status status--error">
-          <p>Couldn't analyze that file: {view.message}</p>
+          <p>{view.message}</p>
           <button className="btn" onClick={home}>
             Back
           </button>

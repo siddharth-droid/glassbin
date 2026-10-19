@@ -175,7 +175,10 @@ fn from_pe(pe: &pe::PE, bytes: &[u8]) -> BinaryInfo {
                 Some(known) if i.name.starts_with("ORDINAL ") => known.to_string(),
                 _ => i.name.to_string(),
             };
-            Import { library: Some(i.dll.to_string()), name }
+            Import {
+                library: Some(i.dll.to_string()),
+                name,
+            }
         })
         .collect();
 
@@ -187,7 +190,11 @@ fn from_pe(pe: &pe::PE, bytes: &[u8]) -> BinaryInfo {
         sections,
         libraries: pe.libraries.iter().map(|s| s.to_string()).collect(),
         imports,
-        exports: pe.exports.iter().filter_map(|e| e.name.map(str::to_string)).collect(),
+        exports: pe
+            .exports
+            .iter()
+            .filter_map(|e| e.name.map(str::to_string))
+            .collect(),
     }
 }
 
@@ -204,7 +211,11 @@ fn from_elf(elf: &elf::Elf, bytes: &[u8]) -> BinaryInfo {
                 file_offset: sh.sh_offset,
                 file_size: if in_file { sh.sh_size } else { 0 },
                 virtual_address: sh.sh_addr,
-                entropy: if in_file { range_entropy(bytes, sh.sh_offset, sh.sh_size) } else { 0.0 },
+                entropy: if in_file {
+                    range_entropy(bytes, sh.sh_offset, sh.sh_size)
+                } else {
+                    0.0
+                },
             }
         })
         .collect();
@@ -217,7 +228,10 @@ fn from_elf(elf: &elf::Elf, bytes: &[u8]) -> BinaryInfo {
             continue;
         };
         if sym.is_import() {
-            imports.push(Import { library: None, name: name.to_string() });
+            imports.push(Import {
+                library: None,
+                name: name.to_string(),
+            });
         } else if sym.st_bind() == elf::sym::STB_GLOBAL && sym.st_value != 0 {
             exports.push(name.to_string());
         }
@@ -253,15 +267,16 @@ fn from_macho(macho: &mach::MachO) -> Result<BinaryInfo, ParseError> {
     let imports = macho
         .imports()?
         .into_iter()
-        .map(|i| Import { library: Some(i.dylib.to_string()), name: i.name.to_string() })
+        .map(|i| Import {
+            library: Some(i.dylib.to_string()),
+            name: i.name.to_string(),
+        })
         .collect();
     let exports = macho.exports()?.into_iter().map(|e| e.name).collect();
 
-    let arch = mach::constants::cputype::get_arch_name_from_types(
-        macho.header.cputype(),
-        macho.header.cpusubtype(),
-    )
-    .unwrap_or("unknown");
+    let arch =
+        mach::constants::cputype::get_arch_name_from_types(macho.header.cputype(), macho.header.cpusubtype())
+            .unwrap_or("unknown");
 
     Ok(BinaryInfo {
         format: Format::MachO,
@@ -269,7 +284,12 @@ fn from_macho(macho: &mach::MachO) -> Result<BinaryInfo, ParseError> {
         is_64: macho.is_64,
         entry_point: macho.entry,
         sections,
-        libraries: macho.libs.iter().filter(|l| **l != "self").map(|s| s.to_string()).collect(),
+        libraries: macho
+            .libs
+            .iter()
+            .filter(|l| **l != "self")
+            .map(|s| s.to_string())
+            .collect(),
         imports,
         exports,
     })

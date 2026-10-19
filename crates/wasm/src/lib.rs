@@ -1,8 +1,9 @@
 //! The browser entry point. `wasm-bindgen` generates the JavaScript glue so the web app can
 //! call `analyze(bytes)` like a normal JS function — the file never leaves the user's machine.
 
-use binscope_core::{
-    drop_repeated, extract_strings, is_meaningful, parse, shannon_entropy, windowed_entropy, BinaryInfo, FoundString,
+use glassbin_core::{
+    BinaryInfo, FoundString, drop_repeated, extract_strings, is_meaningful, parse, shannon_entropy,
+    windowed_entropy,
 };
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
@@ -37,6 +38,13 @@ fn pick_block_size(len: usize) -> usize {
     len.div_ceil(TARGET_BLOCKS).next_power_of_two().max(64)
 }
 
+/// Runs once when the module loads. A Rust panic in WASM otherwise surfaces in JS as a bare
+/// "unreachable executed"; this hook logs the real message and location to the console first.
+#[wasm_bindgen(start)]
+fn start() {
+    std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+}
+
 #[wasm_bindgen]
 pub fn analyze(bytes: &[u8]) -> Result<JsValue, JsError> {
     let block_size = pick_block_size(bytes.len());
@@ -59,7 +67,10 @@ pub fn analyze(bytes: &[u8]) -> Result<JsValue, JsError> {
         entropy: shannon_entropy(bytes),
         block_size,
         // f32 is plenty of precision for drawing, and halves the data crossing into JS.
-        blocks: windowed_entropy(bytes, block_size, block_size.max(MIN_WINDOW)).into_iter().map(|e| e as f32).collect(),
+        blocks: windowed_entropy(bytes, block_size, block_size.max(MIN_WINDOW))
+            .into_iter()
+            .map(|e| e as f32)
+            .collect(),
         binary,
         parse_error,
         string_count,

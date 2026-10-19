@@ -158,7 +158,7 @@ export function ByteField({ bytes, report, triggerRef }: Props) {
       ref={canvasRef}
       className="bytefield"
       role="img"
-      aria-label="The bytes of binscope.exe as hexadecimal, turning into a colour map of their entropy"
+      aria-label="The bytes of glassbin.exe as hexadecimal, turning into a colour map of their entropy"
     />
   )
 }

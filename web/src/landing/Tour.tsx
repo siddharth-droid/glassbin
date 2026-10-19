@@ -11,7 +11,7 @@ interface Props {
 }
 
 /**
- * Scrollytelling walkthrough: step text scrolls on the left, a real binscope view stays
+ * Scrollytelling walkthrough: step text scrolls on the left, a real glassbin view stays
  * pinned on the right and lights up whatever the current step is talking about.
  */
 export function Tour({ report, fileName }: Props) {

@@ -6,3 +6,7 @@ members = ["crates/core", "crates/cli", "crates/wasm"]
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
+
+# The hostile-input tests parse thousands of mutated binaries; unoptimized builds make that crawl.
+[profile.test]
+opt-level = 1

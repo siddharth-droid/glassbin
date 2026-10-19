@@ -1,6 +1,8 @@
 use std::{collections::BTreeMap, env, fs, process};
 
-use binscope_core::{block_entropy, drop_repeated, extract_strings, is_meaningful, parse, shannon_entropy, BinaryInfo};
+use glassbin_core::{
+    BinaryInfo, block_entropy, drop_repeated, extract_strings, is_meaningful, parse, shannon_entropy,
+};
 
 const BLOCK_SIZE: usize = 4096;
 const MIN_STRING_LEN: usize = 6;
@@ -9,7 +11,7 @@ const MAX_REPEATS: usize = 3;
 
 fn main() {
     let Some(path) = env::args().nth(1) else {
-        eprintln!("usage: binscope <file>");
+        eprintln!("usage: glassbin <file>");
         process::exit(2);
     };
 
@@ -54,7 +56,10 @@ fn print_structure(info: &BinaryInfo) {
     println!("entry     0x{:x}", info.entry_point);
 
     println!("\nsections ({}):", info.sections.len());
-    println!("  {:<24} {:>10} {:>10} {:>8}  ", "name", "offset", "size", "entropy");
+    println!(
+        "  {:<24} {:>10} {:>10} {:>8}  ",
+        "name", "offset", "size", "entropy"
+    );
     for s in &info.sections {
         println!(
             "  {:<24} {:>#10x} {:>10} {:>8.2}  {}",
@@ -72,11 +77,19 @@ fn print_structure(info: &BinaryInfo) {
         let lib = imp.library.as_deref().unwrap_or("(dynamic)");
         by_lib.entry(lib).or_default().push(&imp.name);
     }
-    println!("\nimports   {} functions from {} libraries", info.imports.len(), info.libraries.len());
+    println!(
+        "\nimports   {} functions from {} libraries",
+        info.imports.len(),
+        info.libraries.len()
+    );
     for (lib, names) in &by_lib {
         let preview: Vec<&str> = names.iter().take(4).copied().collect();
         let more = names.len().saturating_sub(preview.len());
-        let suffix = if more > 0 { format!(" +{more} more") } else { String::new() };
+        let suffix = if more > 0 {
+            format!(" +{more} more")
+        } else {
+            String::new()
+        };
         println!("  {lib:<36} {}{suffix}", preview.join(", "));
     }
 

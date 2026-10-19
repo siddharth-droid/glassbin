@@ -1,0 +1,22 @@
+[package]
+name = "glassbin-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+glassbin-core = { path = "../crates/core" }
+
+# Kept out of the main workspace: it needs nightly Rust and libFuzzer.
+[workspace]
+
+[[bin]]
+name = "parse"
+path = "fuzz_targets/parse.rs"
+test = false
+doc = false
+bench = false

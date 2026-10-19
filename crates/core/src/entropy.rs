@@ -53,7 +53,9 @@ pub fn windowed_entropy(bytes: &[u8], step: usize, window: usize) -> Vec<f64> {
     (0..bytes.len().div_ceil(step))
         .map(|i| {
             // Centre the window on this step, then slide it back inside the file at the edges.
-            let start = (i * step).saturating_sub(half).min(bytes.len().saturating_sub(window));
+            let start = (i * step)
+                .saturating_sub(half)
+                .min(bytes.len().saturating_sub(window));
             let end = (start + window).min(bytes.len());
             shannon_entropy(&bytes[start..end])
         })
@@ -110,7 +112,10 @@ mod tests {
     fn windows_reveal_randomness_at_fine_steps() {
         let values = windowed_entropy(&noise(64 * 100), 64, 4096);
         assert_eq!(values.len(), 100); // still one value per 64-byte step
-        assert!(values.iter().all(|&e| e > 7.9), "random data should read close to 8");
+        assert!(
+            values.iter().all(|&e| e > 7.9),
+            "random data should read close to 8"
+        );
     }
 
     #[test]

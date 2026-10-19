@@ -60,8 +60,15 @@ pub fn drop_repeated(strings: Vec<FoundString>, max_repeats: usize) -> Vec<Found
         *counts.entry(s.text.as_str()).or_default() += 1;
     }
     // `counts` borrows from `strings`, so decide what to keep first, then consume `strings`.
-    let keep: Vec<bool> = strings.iter().map(|s| counts[s.text.as_str()] <= max_repeats).collect();
-    strings.into_iter().zip(keep).filter_map(|(s, k)| k.then_some(s)).collect()
+    let keep: Vec<bool> = strings
+        .iter()
+        .map(|s| counts[s.text.as_str()] <= max_repeats)
+        .collect();
+    strings
+        .into_iter()
+        .zip(keep)
+        .filter_map(|(s, k)| k.then_some(s))
+        .collect()
 }
 
 fn push_if_long(found: &mut Vec<FoundString>, bytes: &[u8], start: usize, end: usize, min_len: usize) {
@@ -101,7 +108,10 @@ mod tests {
 
     #[test]
     fn drops_strings_that_repeat_too_often() {
-        let s = |offset, text: &str| FoundString { offset, text: text.to_string() };
+        let s = |offset, text: &str| FoundString {
+            offset,
+            text: text.to_string(),
+        };
         let input = vec![
             s(0, "UAWAVAUATVWSH"),
             s(10, "Hello there"),

@@ -14,7 +14,7 @@ export function Stats({ name, report, ms }: { name: string; report: Report; ms: 
         <p>
           {b
             ? `A ${b.is64 ? 64 : 32}-bit ${PLATFORM[b.format]} program (${FORMAT[b.format]}) for ${b.arch.toLowerCase()}.`
-            : `Not an executable binscope can parse (${report.parseError}). Entropy and strings still apply.`}
+            : `Not an executable glassbin can parse (${report.parseError}). Entropy and strings still apply.`}
         </p>
       </div>
       <dl className="stat-grid">
