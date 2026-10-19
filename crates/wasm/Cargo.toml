@@ -1,0 +1,15 @@
+[package]
+name = "binscope-wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+# cdylib = a dynamic library in the C ABI sense — what wasm-bindgen needs to produce a .wasm module.
+crate-type = ["cdylib"]
+
+[dependencies]
+binscope-core = { path = "../core", features = ["serde"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde-wasm-bindgen = "0.6.5"
+wasm-bindgen = "0.2.129"
