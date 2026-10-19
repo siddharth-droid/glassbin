@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { AnalysisError, analyzeBytes, analyzeFile, loadWasm, type Analysis } from './lib/wasm'
+import { prefersReducedMotion } from './lib/motion'
 import { SAMPLE_NAME, SAMPLE_URL } from './lib/site'
 import { Landing, type Sample } from './landing/Landing'
 import { Workspace } from './workspace/Workspace'
@@ -32,9 +34,22 @@ export default function App() {
     }
   }, [])
 
+  // Switch views inside a View Transition (a native crossfade) where the browser supports it.
+  // `flushSync` makes React render synchronously, so the browser can snapshot the new view.
   const show = useCallback((next: View) => {
-    setView(next)
-    window.scrollTo(0, 0)
+    const apply = () => {
+      flushSync(() => setView(next))
+      // "instant": the page sets `scroll-behavior: smooth`, which would otherwise animate this jump.
+      window.scrollTo({ top: 0, behavior: 'instant' })
+    }
+    // The brief "busy" state isn't worth animating, and a transition into it would only be
+    // interrupted by the next one.
+    if (!document.startViewTransition || prefersReducedMotion() || next.kind === 'busy') return apply()
+    const transition = document.startViewTransition(apply)
+    // A transition interrupted by a newer one rejects these promises; that's expected, not an error.
+    const ignore = () => {}
+    transition.ready.catch(ignore)
+    transition.finished.catch(ignore)
   }, [])
 
   const openFile = useCallback(

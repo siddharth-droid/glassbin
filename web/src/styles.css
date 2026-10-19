@@ -35,6 +35,28 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  /* Native scrolling, styled to match: a thin thumb in the rule colour on the page ink. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule-2) var(--ink);
+  /* In-page links glide, and stop clear of the sticky nav. */
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--nav-h) + 24px);
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Inner scrolling panels (imports, strings, code) get the same thin bar on their own ground. */
+.import-groups,
+.string-list,
+.netlog tbody,
+.table-scroll,
+.engine-sig,
+.cli pre {
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule-2) transparent;
 }
 
 body {
@@ -163,6 +185,39 @@ pre,
 .nav--workspace {
   justify-content: space-between;
 }
+/* The logo holds still while the rest of the page crossfades between landing and report. */
+.wordmark {
+  view-transition-name: wordmark;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.22s;
+}
+
+/* Reading progress: a heat line along the nav's bottom edge, driven by the page's own scroll
+   (CSS scroll-driven animation, no JavaScript). Browsers without support simply don't show it. */
+@supports (animation-timeline: scroll()) {
+  .landing .nav::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background: var(--heat);
+    transform-origin: left center;
+    animation: read-progress linear both;
+    animation-timeline: scroll(root block);
+  }
+}
+@keyframes read-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
 
 /* ── landing layout ────────────────────────────────── */
 
@@ -275,47 +330,89 @@ pre,
 .tour {
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  align-items: start;
   gap: clamp(32px, 5vw, 72px);
 }
 .tour-steps {
   list-style: none;
   margin: 0;
   padding: 0;
+  border-bottom: 1px solid var(--rule);
 }
 .tour-step {
-  min-height: 62vh;
-  padding: 24px 0 24px 22px;
-  border-left: 1px solid var(--rule);
-  opacity: 0.38;
-  transition:
-    opacity 0.35s,
-    border-color 0.35s;
+  position: relative;
+  border-top: 1px solid var(--rule);
 }
-.tour-step:last-child {
-  min-height: 40vh;
-}
-.tour-step.is-active {
-  opacity: 1;
-  border-left-color: var(--heat);
-}
-.tour-step h3 {
-  margin: 0;
-  font: 500 20px/1.25 var(--mono);
+.tour-step button {
+  display: block;
+  width: 100%;
+  padding: 18px 0 18px 18px;
+  font: 500 18px/1.3 var(--mono);
   font-stretch: 87.5%;
   letter-spacing: -0.02em;
+  text-align: left;
+  color: var(--faint);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  transition: color 0.2s;
 }
-.tour-step p {
-  margin: 12px 0 0;
-  max-width: 44ch;
+.tour-step button:hover {
+  color: var(--paper);
+}
+.tour-step button:focus-visible {
+  outline-offset: -2px;
+}
+.tour-step.is-active button {
+  color: var(--paper);
+  padding-bottom: 10px;
+}
+/* The active step's marker, aligned with its title */
+.tour-step.is-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 22px;
+  width: 6px;
+  height: 14px;
+  border-radius: 1px;
+  background: var(--heat);
+}
+.tour-step-body {
+  padding: 0 0 22px 18px;
+  animation: panel-in 0.35s ease-out;
+}
+.tour-step-body p {
+  margin: 0;
+  max-width: 46ch;
   font-size: 16px;
   color: var(--dim);
+}
+/* Autoplay timer: fills along the step's bottom edge; its animationend advances the tour. */
+.tour-timer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--heat);
+  transform-origin: left center;
+  animation-name: tour-fill;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+@keyframes tour-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
 .tour-stage {
   position: relative;
 }
 .tour-frame {
-  position: sticky;
-  top: calc(var(--nav-h) + 32px);
   padding: 18px;
   background: var(--ink-1);
   border: 1px solid var(--rule);
@@ -341,7 +438,7 @@ pre,
   }
 }
 .tour-placeholder {
-  height: 60vh;
+  height: 480px;
 }
 
 .facts {
@@ -1027,20 +1124,15 @@ summary .mono {
     margin-top: 0;
   }
 
+  /* Phones: the live view first, the steps below it as an accordion. */
   .tour {
     grid-template-columns: 1fr;
-    gap: 0;
+    gap: 20px;
   }
   .tour-stage {
     order: -1;
-    position: sticky;
-    top: var(--nav-h);
-    z-index: 5;
-    padding: 12px 0;
-    background: var(--ink);
   }
   .tour-frame {
-    position: static;
     padding: 12px;
   }
   .tour-panel {
@@ -1052,8 +1144,9 @@ summary .mono {
   .tour-frame .legend-labels {
     display: none;
   }
-  .tour-step {
-    min-height: 55vh;
+  .tour-step button {
+    font-size: 16px;
+    padding: 15px 0 15px 16px;
   }
 
   .engine-diagram {

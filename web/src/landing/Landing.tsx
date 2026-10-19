@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Analysis } from '../lib/wasm'
 import { formatBytes } from '../lib/format'
 import { REPO_URL, SAMPLE_NAME } from '../lib/site'
-import { gsap, prefersReducedMotion, useGSAP, useSmoothScroll } from '../lib/motion'
+import { gsap, prefersReducedMotion, useGSAP } from '../lib/motion'
 import { ByteField } from './ByteField'
 import { Tour } from './Tour'
 import { Glyph } from './Glyph'
@@ -20,7 +20,6 @@ interface Props {
 export function Landing({ sample, onOpen, onSample }: Props) {
   const heroRef = useRef<HTMLElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
-  useSmoothScroll(true)
 
   useGSAP(
     () => {
