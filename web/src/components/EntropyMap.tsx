@@ -7,6 +7,8 @@ interface Props {
   blockSize: number
   sections: Section[]
   highlight: ByteRange | null
+  /** Smallest cell width in CSS px; lower packs more columns, for a compact overview. */
+  minCellPx?: number
 }
 
 // One full-screen triangle pair; the fragment shader does all the work per pixel.
@@ -82,10 +84,8 @@ function compile(gl: WebGL2RenderingContext, type: number, src: string) {
 
 /** Wider grids for bigger files, so cells stay a readable size. */
 const columnsFor = (n: number) => (n <= 256 ? 32 : n <= 1024 ? 64 : 128)
-/** Never let a cell get narrower than this many CSS pixels (matters on phones). */
-const MIN_CELL_PX = 7
 
-export function EntropyMap({ blocks, blockSize, sections, highlight }: Props) {
+export function EntropyMap({ blocks, blockSize, sections, highlight, minCellPx = 7 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const [maxCols, setMaxCols] = useState(128)
@@ -97,11 +97,11 @@ export function EntropyMap({ blocks, blockSize, sections, highlight }: Props) {
   useEffect(() => {
     const wrap = wrapRef.current!
     const ro = new ResizeObserver(([entry]) =>
-      setMaxCols(Math.max(16, Math.floor(entry.contentRect.width / MIN_CELL_PX))),
+      setMaxCols(Math.max(16, Math.floor(entry.contentRect.width / minCellPx))),
     )
     ro.observe(wrap)
     return () => ro.disconnect()
-  }, [])
+  }, [minCellPx])
 
   const cols = Math.min(columnsFor(blocks.length), maxCols)
   const rows = Math.max(1, Math.ceil(blocks.length / cols))

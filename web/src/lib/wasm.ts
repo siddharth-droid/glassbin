@@ -9,10 +9,18 @@ export function loadWasm() {
   return ready
 }
 
-export async function analyzeFile(file: Blob): Promise<{ report: Report; ms: number }> {
+export interface Analysis {
+  report: Report
+  ms: number
+}
+
+export async function analyzeBytes(bytes: Uint8Array): Promise<Analysis> {
   await loadWasm()
-  const bytes = new Uint8Array(await file.arrayBuffer())
   const t0 = performance.now()
   const report = analyze(bytes) as Report
   return { report, ms: performance.now() - t0 }
+}
+
+export async function analyzeFile(file: Blob): Promise<Analysis> {
+  return analyzeBytes(new Uint8Array(await file.arrayBuffer()))
 }

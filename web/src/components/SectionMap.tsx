@@ -8,10 +8,12 @@ interface Props {
   pinned: number | null
   onHover: (index: number | null) => void
   onPin: (index: number | null) => void
+  /** Just the bar, labelled underneath — no table. Used in the landing-page tour. */
+  compact?: boolean
 }
 
 /** The file laid out left-to-right, one coloured segment per section, plus a detail table. */
-export function SectionMap({ sections, fileSize, active, pinned, onHover, onPin }: Props) {
+export function SectionMap({ sections, fileSize, active, pinned, onHover, onPin, compact }: Props) {
   const toggle = (i: number) => onPin(pinned === i ? null : i)
 
   return (
@@ -40,15 +42,23 @@ export function SectionMap({ sections, fileSize, active, pinned, onHover, onPin 
         )}
       </div>
 
+      {compact ? (
+        active !== null && (
+          <p className="section-caption">
+            <span className="mono">{sections[active].name}</span>, {formatBytes(sections[active].fileSize)} at{' '}
+            {sections[active].entropy.toFixed(2)} bits per byte: {entropyLabel(sections[active].entropy)}
+          </p>
+        )
+      ) : (
       <div className="table-scroll">
         <table className="data-table">
           <thead>
             <tr>
-              <th>section</th>
-              <th className="num">offset</th>
-              <th className="num">size</th>
-              <th className="num">entropy</th>
-              <th>reads as</th>
+              <th>Section</th>
+              <th className="num">Offset</th>
+              <th className="num">Size</th>
+              <th className="num">Entropy</th>
+              <th>Reads as</th>
             </tr>
           </thead>
           <tbody onPointerLeave={() => onHover(null)}>
@@ -72,6 +82,7 @@ export function SectionMap({ sections, fileSize, active, pinned, onHover, onPin 
           </tbody>
         </table>
       </div>
+      )}
     </div>
   )
 }

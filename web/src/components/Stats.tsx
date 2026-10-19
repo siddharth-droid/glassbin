@@ -1,5 +1,8 @@
-import type { Report } from '../types'
-import { FORMAT_LABEL, entropyColor, formatBytes } from '../lib/format'
+import type { BinaryInfo, Report } from '../types'
+import { entropyColor, formatBytes } from '../lib/format'
+
+const PLATFORM: Record<BinaryInfo['format'], string> = { pe: 'Windows', elf: 'Linux', macho: 'macOS' }
+const FORMAT: Record<BinaryInfo['format'], string> = { pe: 'PE', elf: 'ELF', macho: 'Mach-O' }
 
 export function Stats({ name, report, ms }: { name: string; report: Report; ms: number }) {
   const b = report.binary
@@ -7,32 +10,30 @@ export function Stats({ name, report, ms }: { name: string; report: Report; ms: 
   return (
     <header className="stats panel">
       <div className="stats-title">
-        <h2 className="mono">{name}</h2>
-        <p className="muted">
-          {b ? `${FORMAT_LABEL[b.format]} · ${b.arch} · ${b.is64 ? 64 : 32}-bit` : report.parseError}
+        <h1>{name}</h1>
+        <p>
+          {b
+            ? `A ${b.is64 ? 64 : 32}-bit ${PLATFORM[b.format]} program (${FORMAT[b.format]}) for ${b.arch.toLowerCase()}.`
+            : `Not an executable binscope can parse (${report.parseError}). Entropy and strings still apply.`}
         </p>
       </div>
       <dl className="stat-grid">
-        <Stat label="size" value={formatBytes(report.size)} />
-        <Stat
-          label="entropy"
-          value={report.entropy.toFixed(2)}
-          swatch={entropyColor(report.entropy)}
-        />
-        {b && <Stat label="sections" value={b.sections.length} />}
-        {b && <Stat label="imports" value={b.imports.length} />}
-        <Stat label="strings" value={report.stringCount.toLocaleString()} />
-        <Stat label="analyzed in" value={`${ms < 10 ? ms.toFixed(1) : Math.round(ms)} ms`} accent />
+        <Stat label="Size" value={formatBytes(report.size)} />
+        <Stat label="Entropy" value={report.entropy.toFixed(2)} swatch={entropyColor(report.entropy)} />
+        {b && <Stat label="Sections" value={b.sections.length} />}
+        {b && <Stat label="Imports" value={b.imports.length} />}
+        <Stat label="Strings" value={report.stringCount.toLocaleString()} />
+        <Stat label="Read in" value={`${ms < 10 ? ms.toFixed(1) : Math.round(ms)} ms`} />
       </dl>
     </header>
   )
 }
 
-function Stat({ label, value, swatch, accent }: { label: string; value: string | number; swatch?: string; accent?: boolean }) {
+function Stat({ label, value, swatch }: { label: string; value: string | number; swatch?: string }) {
   return (
     <div className="stat">
       <dt>{label}</dt>
-      <dd className={`mono ${accent ? 'accent' : ''}`}>
+      <dd className="mono">
         {swatch && <span className="swatch" style={{ background: swatch }} />}
         {value}
       </dd>

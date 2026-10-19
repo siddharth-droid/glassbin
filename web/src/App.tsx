@@ -1,152 +1,133 @@
-import { useEffect, useRef, useState } from 'react'
-import gsap from 'gsap'
-import { useGSAP } from '@gsap/react'
-import type { ByteRange, Report } from './types'
-import { analyzeFile, loadWasm } from './lib/wasm'
-import { DropZone } from './components/DropZone'
-import { Stats } from './components/Stats'
-import { EntropyMap } from './components/EntropyMap'
-import { SectionMap } from './components/SectionMap'
-import { Capabilities, Imports } from './components/Imports'
-import { Strings } from './components/Strings'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { analyzeBytes, analyzeFile, loadWasm, type Analysis } from './lib/wasm'
+import { SAMPLE_NAME, SAMPLE_URL } from './lib/site'
+import { Landing, type Sample } from './landing/Landing'
+import { Workspace } from './workspace/Workspace'
 
-gsap.registerPlugin(useGSAP)
-
-type State =
-  | { status: 'idle' }
-  | { status: 'busy' }
-  | { status: 'done'; name: string; report: Report; ms: number }
-  | { status: 'error'; message: string }
-
-const SAMPLE_URL = '/samples/binscope-cli.exe'
+type View =
+  | { kind: 'landing' }
+  | { kind: 'busy'; name: string }
+  | ({ kind: 'report'; name: string } & Analysis)
+  | { kind: 'error'; message: string }
 
 export default function App() {
-  const [state, setState] = useState<State>({ status: 'idle' })
-  const [hovered, setHovered] = useState<number | null>(null)
-  const [pinned, setPinned] = useState<number | null>(null)
-  const resultsRef = useRef<HTMLDivElement>(null)
+  const [view, setView] = useState<View>({ kind: 'landing' })
+  const [sample, setSample] = useState<Sample | null>(null)
+  const [dragging, setDragging] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
 
-  // Start fetching the WASM module right away, so the first analysis feels instant.
+  // Analyze the sample on load: the landing page is built from this live result.
   useEffect(() => {
-    loadWasm()
+    let cancelled = false
+    ;(async () => {
+      await loadWasm()
+      const res = await fetch(SAMPLE_URL)
+      if (!res.ok) return
+      const bytes = new Uint8Array(await res.arrayBuffer())
+      const analysis = await analyzeBytes(bytes)
+      if (!cancelled) setSample({ ...analysis, bytes })
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
-  const run = async (name: string, file: Blob) => {
-    setState({ status: 'busy' })
-    setHovered(null)
-    setPinned(null)
-    try {
-      const { report, ms } = await analyzeFile(file)
-      setState({ status: 'done', name, report, ms })
-    } catch (e) {
-      setState({ status: 'error', message: e instanceof Error ? e.message : String(e) })
-    }
-  }
+  const show = useCallback((next: View) => {
+    setView(next)
+    window.scrollTo(0, 0)
+  }, [])
 
-  const runSample = async () => {
-    const res = await fetch(SAMPLE_URL)
-    if (!res.ok) return setState({ status: 'error', message: 'Sample binary not found — run `npm run sample`.' })
-    run('binscope-cli.exe', await res.blob())
-  }
-
-  const report = state.status === 'done' ? state.report : null
-  const sections = report?.binary?.sections ?? []
-  const activeIdx = hovered ?? pinned
-  const active = activeIdx !== null ? sections[activeIdx] : undefined
-  const highlight: ByteRange | null = active ? { start: active.fileOffset, end: active.fileOffset + active.fileSize } : null
-
-  // Panels rise in one after another whenever a new report arrives.
-  useGSAP(
-    () => {
-      if (!report) return
-      gsap.from('.panel', { y: 28, opacity: 0, duration: 0.7, stagger: 0.08, ease: 'power3.out' })
-      gsap.from('.seg', { scaleX: 0, transformOrigin: 'left center', duration: 0.6, stagger: 0.04, ease: 'power2.out', delay: 0.25 })
+  const openFile = useCallback(
+    async (name: string, file: Blob) => {
+      show({ kind: 'busy', name })
+      try {
+        const analysis = await analyzeFile(file)
+        show({ kind: 'report', name, ...analysis })
+        if (location.hash !== '#report') history.pushState(null, '', '#report')
+      } catch (e) {
+        show({ kind: 'error', message: e instanceof Error ? e.message : String(e) })
+      }
     },
-    { scope: resultsRef, dependencies: [report] },
+    [show],
   )
 
-  return (
-    <div className="app">
-      <section className={`hero ${report ? 'hero--compact' : ''}`}>
-        <h1>
-          bin<span className="accent">scope</span>
-        </h1>
-        <p className="tagline">
-          See inside any executable. Written in Rust, running in your browser through WebAssembly —
-          <strong> your file never leaves this tab.</strong>
-        </p>
-      </section>
+  // Browser back from a report returns to the landing page.
+  useEffect(() => {
+    const onPop = () => location.hash !== '#report' && show({ kind: 'landing' })
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [show])
 
-      <DropZone
-        compact={!!report}
-        busy={state.status === 'busy'}
-        onFile={(f) => run(f.name, f)}
-        onSample={runSample}
+  // Drop a file anywhere on the page.
+  useEffect(() => {
+    let depth = 0
+    const hasFiles = (e: DragEvent) => e.dataTransfer?.types.includes('Files')
+    const enter = (e: DragEvent) => {
+      if (!hasFiles(e)) return
+      depth++
+      setDragging(true)
+    }
+    const leave = () => {
+      depth = Math.max(0, depth - 1)
+      if (depth === 0) setDragging(false)
+    }
+    const over = (e: DragEvent) => hasFiles(e) && e.preventDefault()
+    const drop = (e: DragEvent) => {
+      e.preventDefault()
+      depth = 0
+      setDragging(false)
+      const file = e.dataTransfer?.files[0]
+      if (file) openFile(file.name, file)
+    }
+    window.addEventListener('dragenter', enter)
+    window.addEventListener('dragleave', leave)
+    window.addEventListener('dragover', over)
+    window.addEventListener('drop', drop)
+    return () => {
+      window.removeEventListener('dragenter', enter)
+      window.removeEventListener('dragleave', leave)
+      window.removeEventListener('dragover', over)
+      window.removeEventListener('drop', drop)
+    }
+  }, [openFile])
+
+  const open = () => inputRef.current?.click()
+  const openSample = () => sample && openFile(SAMPLE_NAME, new Blob([sample.bytes as BlobPart]))
+  const home = () => {
+    if (location.hash === '#report') history.back()
+    else show({ kind: 'landing' })
+  }
+
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) openFile(file.name, file)
+          e.target.value = '' // allow choosing the same file again
+        }}
       />
 
-      {state.status === 'error' && <p className="error">{state.message}</p>}
-
-      {state.status === 'done' && report && (
-        <div className="results" ref={resultsRef}>
-          <Stats name={state.name} report={report} ms={state.ms} />
-
-          <section className="panel">
-            <PanelHead
-              title="Entropy map"
-              hint={`Each cell is ${report.blockSize.toLocaleString()} bytes. Bright = random-looking data (compressed or encrypted). Hover to inspect.`}
-            />
-            <EntropyMap blocks={report.blocks} blockSize={report.blockSize} sections={sections} highlight={highlight} />
-          </section>
-
-          {report.binary && (
-            <>
-              <section className="panel">
-                <PanelHead title="Sections" hint="How the file is laid out. Hover or click a section to light it up on the map." />
-                <SectionMap
-                  sections={sections}
-                  fileSize={report.size}
-                  active={activeIdx}
-                  pinned={pinned}
-                  onHover={setHovered}
-                  onPin={setPinned}
-                />
-              </section>
-
-              <div className="two-col">
-                <section className="panel">
-                  <PanelHead title="Capabilities" hint="What it can do, inferred from the system functions it imports." />
-                  <Capabilities binary={report.binary} />
-                </section>
-                <section className="panel">
-                  <PanelHead
-                    title="Imports"
-                    hint={`${report.binary.imports.length} functions from ${report.binary.libraries.length} libraries.`}
-                  />
-                  <Imports binary={report.binary} />
-                </section>
-              </div>
-            </>
-          )}
-
-          <section className="panel">
-            <PanelHead title="Strings" hint="Readable text embedded in the file — messages, URLs, paths, names." />
-            <Strings strings={report.strings} total={report.stringCount} />
-          </section>
+      {view.kind === 'landing' && <Landing sample={sample} onOpen={open} onSample={openSample} />}
+      {view.kind === 'report' && (
+        <Workspace name={view.name} report={view.report} ms={view.ms} onOpen={open} onHome={home} />
+      )}
+      {view.kind === 'busy' && <div className="status">Reading {view.name}…</div>}
+      {view.kind === 'error' && (
+        <div className="status status--error">
+          <p>Couldn't analyze that file: {view.message}</p>
+          <button className="btn" onClick={home}>
+            Back
+          </button>
         </div>
       )}
 
-      <footer className="footer muted">
-        Built with Rust · goblin · wasm-bindgen · React · WebGL · GSAP
-      </footer>
-    </div>
-  )
-}
-
-function PanelHead({ title, hint }: { title: string; hint: string }) {
-  return (
-    <div className="panel-head">
-      <h3>{title}</h3>
-      <p className="muted">{hint}</p>
-    </div>
+      <div className={`drop-overlay ${dragging ? 'is-on' : ''}`} aria-hidden={!dragging}>
+        <p>Drop to analyze. It stays on this device.</p>
+      </div>
+    </>
   )
 }

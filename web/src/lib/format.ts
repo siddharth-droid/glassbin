@@ -46,15 +46,17 @@ const C = [
   [25.13112622477341, -12.24266895238567, -23.07032500287172],
 ]
 
-export function inferno(t: number): string {
+export function infernoRgb(t: number): [number, number, number] {
   t = Math.min(1, Math.max(0, t))
-  const rgb = [0, 1, 2].map((ch) => {
+  const [r, g, b] = [0, 1, 2].map((ch) => {
     let v = 0
     for (let i = C.length - 1; i >= 0; i--) v = v * t + C[i][ch]
     return Math.round(Math.min(1, Math.max(0, v)) * 255)
   })
-  return `rgb(${rgb.join(',')})`
+  return [r, g, b]
 }
 
-/** Map entropy (0–8) into the palette, skipping the near-black and near-white extremes. */
-export const entropyColor = (e: number) => inferno(0.06 + (e / 8) * 0.9)
+/** Entropy (0–8) → palette position, skipping the near-black and near-white extremes. */
+export const entropyT = (e: number) => 0.06 + (e / 8) * 0.9
+export const entropyRgb = (e: number) => infernoRgb(entropyT(e))
+export const entropyColor = (e: number) => `rgb(${entropyRgb(e).join(',')})`

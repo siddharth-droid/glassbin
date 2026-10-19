@@ -53,6 +53,12 @@ export type StringKind = 'url' | 'path' | 'library' | 'text'
 export function classifyString(s: string): StringKind {
   if (/https?:\/\/|wss?:\/\//i.test(s)) return 'url'
   if (/\.(dll|so(\.\d+)*|dylib|sys)\b/i.test(s)) return 'library'
-  if (/^[A-Za-z]:\\|\\\\|^\/(usr|etc|home|var|lib|opt|tmp|System|Library|Applications)\//.test(s)) return 'path'
+  // Rust strings aren't NUL-terminated, so a path is often glued onto the end of other text —
+  // match anywhere in the string, not only at the start.
+  if (
+    /[A-Za-z]:\\\w|^\\\\|~[\\/]|\/(usr|etc|home|var|opt|tmp|rustc|System|Library|Applications)\//.test(s) ||
+    /[\\/][\w.-]+\.(rs|c|cc|cpp|h|go|zig|swift)\b/.test(s)
+  )
+    return 'path'
   return 'text'
 }
