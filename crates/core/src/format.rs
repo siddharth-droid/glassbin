@@ -111,6 +111,48 @@ fn range_entropy(bytes: &[u8], offset: u64, size: u64) -> f64 {
     bytes.get(start..end).map_or(0.0, shannon_entropy)
 }
 
+/// Some Windows DLLs are commonly imported by *ordinal* (a number) instead of by name — the
+/// Winsock library above all, which Rust's `std::net` uses. Its ordinals have been fixed since
+/// Windows 95, so we can translate them back. Without this, networking code is invisible.
+fn known_ordinal(dll: &str, ordinal: u16) -> Option<&'static str> {
+    if !dll.eq_ignore_ascii_case("ws2_32.dll") && !dll.eq_ignore_ascii_case("wsock32.dll") {
+        return None;
+    }
+    Some(match ordinal {
+        1 => "accept",
+        2 => "bind",
+        3 => "closesocket",
+        4 => "connect",
+        5 => "getpeername",
+        6 => "getsockname",
+        7 => "getsockopt",
+        8 => "htonl",
+        9 => "htons",
+        10 => "ioctlsocket",
+        11 => "inet_addr",
+        12 => "inet_ntoa",
+        13 => "listen",
+        14 => "ntohl",
+        15 => "ntohs",
+        16 => "recv",
+        17 => "recvfrom",
+        18 => "select",
+        19 => "send",
+        20 => "sendto",
+        21 => "setsockopt",
+        22 => "shutdown",
+        23 => "socket",
+        51 => "gethostbyaddr",
+        52 => "gethostbyname",
+        57 => "gethostname",
+        111 => "WSAGetLastError",
+        115 => "WSAStartup",
+        116 => "WSACleanup",
+        151 => "__WSAFDIsSet",
+        _ => return None,
+    })
+}
+
 fn from_pe(pe: &pe::PE, bytes: &[u8]) -> BinaryInfo {
     let sections = pe
         .sections
@@ -127,7 +169,14 @@ fn from_pe(pe: &pe::PE, bytes: &[u8]) -> BinaryInfo {
     let imports = pe
         .imports
         .iter()
-        .map(|i| Import { library: Some(i.dll.to_string()), name: i.name.to_string() })
+        .map(|i| {
+            // Imports by number have no name in the file; recover it where the number is well known.
+            let name = match known_ordinal(i.dll, i.ordinal) {
+                Some(known) if i.name.starts_with("ORDINAL ") => known.to_string(),
+                _ => i.name.to_string(),
+            };
+            Import { library: Some(i.dll.to_string()), name }
+        })
         .collect();
 
     BinaryInfo {
@@ -239,6 +288,14 @@ mod tests {
         assert!(!info.sections.is_empty());
         assert!(!info.imports.is_empty());
         assert!(info.entry_point > 0);
+    }
+
+    #[test]
+    fn translates_winsock_ordinals_only() {
+        assert_eq!(known_ordinal("WS2_32.dll", 16), Some("recv"));
+        assert_eq!(known_ordinal("ws2_32.dll", 115), Some("WSAStartup"));
+        assert_eq!(known_ordinal("WS2_32.dll", 9999), None);
+        assert_eq!(known_ordinal("KERNEL32.dll", 16), None);
     }
 
     #[test]
