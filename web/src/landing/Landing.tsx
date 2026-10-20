@@ -1,192 +1,200 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Analysis } from '../lib/wasm'
 import { formatBytes } from '../lib/format'
-import { REPO_URL, SAMPLE_NAME } from '../lib/site'
-import { gsap, prefersReducedMotion, useGSAP } from '../lib/motion'
+import { analyzeFindings, verdictFor } from '../lib/findings'
+import { REPO_URL, SAMPLES } from '../lib/site'
 import { ByteField } from './ByteField'
-import { Tour } from './Tour'
 import { Glyph } from './Glyph'
+import { FindingsList, ProtectionList, describe } from '../components/Summary'
+import { EntropyMap } from '../components/EntropyMap'
 
-export interface Sample extends Analysis {
-  bytes: Uint8Array
+/** A sample analyzed on page load, shown as a live report preview. */
+export interface Preview {
+  name: string
+  analysis: Analysis
 }
 
 interface Props {
-  sample: Sample | null
+  preview: Preview | null
+  /** A file is being dragged over the page. */
+  dragging: boolean
   onOpen: () => void
-  onSample: () => void
+  onSample: (file: string) => void
 }
 
-export function Landing({ sample, onOpen, onSample }: Props) {
-  const heroRef = useRef<HTMLElement>(null)
-  const rootRef = useRef<HTMLDivElement>(null)
-
-  useGSAP(
-    () => {
-      if (prefersReducedMotion()) return
-      // The headline decodes out of hex, the way glassbin turns bytes into meaning.
-      const h1 = rootRef.current!.querySelector('h1')!
-      gsap.to(h1, {
-        duration: 1.4,
-        scrambleText: { text: h1.dataset.text!, chars: '0123456789abcdef', revealDelay: 0.25, speed: 0.5 },
-      })
-      // Connector lines in the engine diagram draw themselves once, when they come into view.
-      gsap.from('.engine-wire path', {
-        strokeDashoffset: (_, el: SVGPathElement) => el.getTotalLength(),
-        strokeDasharray: (_, el: SVGPathElement) => el.getTotalLength(),
-        duration: 0.9,
-        ease: 'power2.inOut',
-        stagger: 0.12,
-        scrollTrigger: { trigger: '.engine', start: 'top 70%' },
-      })
-    },
-    { scope: rootRef },
-  )
-
-  const headline = 'See what a program is made of.'
-
+export function Landing({ preview, dragging, onOpen, onSample }: Props) {
   return (
-    <div className="landing" ref={rootRef} id="top">
+    <div className="landing" id="top">
       <header className="nav">
         <a className="wordmark" href="#top">
           <Glyph />
           glassbin
         </a>
         <nav aria-label="Sections">
-          <a href="#how">How it reads a file</a>
+          <a href="#report">What you get</a>
+          <a href="#privacy">Privacy</a>
           <a href="#cli">CLI</a>
           <a href={REPO_URL}>Source</a>
         </nav>
-        <button className="btn btn--small" onClick={onOpen}>
-          Open a file
-        </button>
       </header>
 
-      <section className="hero" ref={heroRef}>
-        <h1 data-text={headline} aria-label={headline}>
-          {headline}
-        </h1>
-        <div className="hero-body">
+      <section className="hero">
+        <div className="hero-copy">
+          <h1>Know what a program is before you run it.</h1>
           <p className="lede">
-            Drop in any Windows, Linux or macOS executable. glassbin maps its sections, imports, strings and
-            entropy right here in the tab. It's written in Rust, compiled to WebAssembly, and your file is
-            never uploaded.
+            Drop in an <code>.exe</code>, <code>.dll</code>, Linux or macOS binary. glassbin checks it for packing, hidden
+            data, risky capabilities and missing protections, and hands you the hashes to look it up. It runs in your
+            browser, so the file never leaves your machine.
           </p>
-          <div className="hero-actions">
-            <button className="btn btn--primary" onClick={onOpen}>
-              Open a file…
+        </div>
+
+        <div className={`drop ${dragging ? 'is-dragging' : ''}`}>
+          <div className="drop-field">
+            {preview && <ByteField bytes={preview.analysis.bytes} report={preview.analysis.report} revealed={dragging} />}
+          </div>
+          <div className="drop-body">
+            <p className="drop-title">{dragging ? 'Let go to analyze' : 'Drop a file to analyze it'}</p>
+            <button className="btn btn--primary btn--big" onClick={onOpen}>
+              Choose a file…
             </button>
-            <button className="btn" onClick={onSample} disabled={!sample}>
-              Analyze {SAMPLE_NAME}
-            </button>
+            <div className="samples">
+              <span className="samples-label">No file handy? Try a sample:</span>
+              <ul>
+                {SAMPLES.map((s) => (
+                  <li key={s.file}>
+                    <button className="sample" onClick={() => onSample(s.file)}>
+                      <span className="mono">{s.file}</span>
+                      <span className="sample-blurb">{s.blurb}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
-          <p className="hint">Or drag a file anywhere onto this page.</p>
         </div>
-
-        <figure className="hero-figure">
-          <div className="bytefield-wrap">
-            {sample ? <ByteField bytes={sample.bytes} report={sample.report} triggerRef={heroRef} /> : <div className="bytefield-placeholder" />}
-          </div>
-          <figcaption>
-            {sample ? (
-              <>
-                Every byte of {SAMPLE_NAME}, {formatBytes(sample.report.size)}, read by this page in{' '}
-                <strong>{Math.round(sample.ms)} ms</strong> when it loaded. Scroll to turn the bytes into an entropy map,
-                or point at them.
-              </>
-            ) : (
-              'Loading the Rust engine…'
-            )}
-          </figcaption>
-        </figure>
+        <p className="drop-foot">
+          Windows PE · Linux ELF · macOS Mach-O · up to 256 MB · nothing is uploaded
+        </p>
       </section>
 
-      <section className="block" id="how">
+      <section className="block" id="report">
         <div className="block-head">
-          <h2>How it reads a file</h2>
+          <h2>A report you can act on</h2>
           <p>
-            The questions an analyst asks of any unknown program, answered from the bytes of {SAMPLE_NAME}. Nothing on
-            the right is a screenshot; it's the same engine, running now.
+            Not a wall of headers. glassbin leads with a verdict and the findings behind it, in plain language, then lets
+            you drill into imports, strings and raw bytes. This is the real report for{' '}
+            <span className="mono">{SAMPLES[0].file}</span>, generated by this page a moment ago.
           </p>
         </div>
-        {sample ? <Tour report={sample.report} fileName={SAMPLE_NAME} /> : <div className="tour-placeholder" />}
+        {preview ? <ReportPreview preview={preview} onOpen={() => onSample(preview.name)} /> : <div className="preview-placeholder" />}
+        <dl className="checks">
+          <Check title="Verdict and findings">
+            Packed or encrypted code, data hidden after the program, injection and keylogging capabilities, forged
+            timestamps — each explained, with a link to the bytes.
+          </Check>
+          <Check title="Hashes, ready to look up">
+            SHA-256 and SHA-1 with one click to VirusTotal. Only the hash leaves the page, and only if you click.
+          </Check>
+          <Check title="Exploit protections">
+            ASLR, DEP, Control Flow Guard on Windows; PIE, NX, RELRO and stack canaries on Linux.
+          </Check>
+          <Check title="Map, strings and hex">
+            An entropy map of the whole file, every readable string, and a hex view you can jump around in.
+          </Check>
+        </dl>
       </section>
 
-      <section className="block engine">
+      <section className="block" id="who">
         <div className="block-head">
-          <h2>One Rust engine, three ways in</h2>
+          <h2>Who it's for</h2>
+        </div>
+        <ul className="audiences">
+          <li>
+            <strong>Before you run a download.</strong>
+            <span>
+              Check what an installer or tool can do, whether it's hiding a payload, and what VirusTotal knows about it.
+            </span>
+          </li>
+          <li>
+            <strong>Before you ship a build.</strong>
+            <span>Confirm your release binaries have their exploit protections on and nothing unexpected inside.</span>
+          </li>
+          <li>
+            <strong>When you're learning how programs work.</strong>
+            <span>See sections, imports and machine code as they really sit in the file, with every term explained.</span>
+          </li>
+        </ul>
+      </section>
+
+      <section className="block" id="privacy">
+        <div className="block-head">
+          <h2>Your file never leaves this tab</h2>
           <p>
-            All the analysis lives in one library, <code>glassbin-core</code>. Everything else is a thin shell around
-            it, so the browser, the terminal and the server always agree.
-          </p>
-        </div>
-        <div className="engine-diagram">
-          <div className="engine-core">
-            <code className="engine-name">glassbin-core</code>
-            <pre className="engine-sig">
-              <code>{'pub fn parse(bytes: &[u8])\n  -> Result<BinaryInfo, ParseError>'}</code>
-            </pre>
-            <p>PE, ELF and Mach-O parsing with goblin, plus entropy and string extraction. It never touches the disk or the network; it only reads the bytes it's handed.</p>
-          </div>
-          <svg className="engine-wire" viewBox="0 0 100 300" preserveAspectRatio="none" aria-hidden="true">
-            <path d="M0 150 C 50 150, 50 50, 100 50" />
-            <path d="M0 150 L 100 150" />
-            <path d="M0 150 C 50 150, 50 250, 100 250" />
-          </svg>
-          <ul className="engine-targets">
-            <li>
-              <strong>This page</strong>
-              <span>Compiled to WebAssembly with wasm-bindgen. Your file goes into the module's memory, and nowhere else.</span>
-            </li>
-            <li>
-              <strong>Your terminal</strong>
-              <span>The <code>glassbin</code> CLI prints the same report, ready for scripts and CI.</span>
-            </li>
-            <li>
-              <strong>A server</strong>
-              <span>
-                An Axum API that asks Claude to explain a function in plain English. <em>In progress.</em>
-              </span>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <section className="block" id="cli">
-        <div className="block-head">
-          <h2>Same engine in your terminal</h2>
-          <p>Build it from source with Cargo, then point it at anything.</p>
-        </div>
-        <Cli />
-      </section>
-
-      <section className="block">
-        <div className="block-head">
-          <h2>Your file stays here</h2>
-          <p>
-            You don't have to take our word for it. Below is every request this page has made, read live from your
-            browser. Analyze a file, come back, and it's the same list.
+            The analysis engine is Rust compiled to WebAssembly and runs on your machine. Don't take our word for it: here
+            is every network request this page has made, read live from your browser. Analyze a file and come back. The
+            list won't have grown.
           </p>
         </div>
         <NetworkLog />
       </section>
 
-      <section className="closing">
-        <h2>Got a binary you're curious about?</h2>
-        <div className="hero-actions">
-          <button className="btn btn--primary" onClick={onOpen}>
-            Open a file…
-          </button>
-          <a className="btn" href={REPO_URL}>
-            Read the source
-          </a>
+      <section className="block" id="cli">
+        <div className="block-head">
+          <h2>Same engine in your terminal</h2>
+          <p>For scripts and CI: the command-line build prints the same analysis.</p>
         </div>
+        <Cli />
       </section>
 
       <footer className="footer">
-        <span>glassbin is open source under the MIT licence.</span>
-        <span>Built with Rust, goblin, wasm-bindgen, React, WebGL and GSAP.</span>
+        <span>
+          glassbin is open source (MIT). <a href={REPO_URL}>Read the code on GitHub</a>.
+        </span>
+        <span>Built with Rust, goblin, wasm-bindgen, React and WebGL.</span>
       </footer>
+    </div>
+  )
+}
+
+function Check({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div>
+      <dt>{title}</dt>
+      <dd>{children}</dd>
+    </div>
+  )
+}
+
+/** A trimmed, live report: verdict, top findings, protections and the map. */
+function ReportPreview({ preview, onOpen }: { preview: Preview; onOpen: () => void }) {
+  const { report } = preview.analysis
+  const findings = useMemo(() => analyzeFindings(report), [report])
+  const verdict = useMemo(() => verdictFor(findings, report), [findings, report])
+  return (
+    <div className="preview">
+      <div className="preview-head">
+        <div>
+          <span className="mono preview-name">{preview.name}</span>
+          <span className="dim">{describe(report)}</span>
+        </div>
+        <button className="btn btn--small" onClick={onOpen}>
+          Open the full report
+        </button>
+      </div>
+      <div className={`verdict verdict--${verdict.severity}`}>
+        <span className="verdict-dot" aria-hidden="true" />
+        <div>
+          <strong>{verdict.headline}</strong>
+          <p>{verdict.summary}</p>
+        </div>
+      </div>
+      <div className="preview-grid">
+        <FindingsList findings={findings.slice(0, 3)} onShow={onOpen} />
+        <div className="preview-side">
+          {report.binary && <ProtectionList binary={report.binary} />}
+          <EntropyMap blocks={report.blocks} blockSize={report.blockSize} sections={report.binary?.sections ?? []} highlight={findings[0]?.range ?? null} minCellPx={4} />
+        </div>
+      </div>
     </div>
   )
 }
@@ -195,25 +203,23 @@ const INSTALL = `git clone ${REPO_URL}
 cargo install --path glassbin/crates/cli
 glassbin ./program.exe`
 
-// Real output from running the CLI on the sample binary, trimmed.
-const OUTPUT = `file      glassbin.exe
-size      557568 bytes
-entropy   6.310 bits/byte
+// Real output from running the CLI on demo-app.exe, trimmed.
+const OUTPUT = `file      demo-app.exe
+size      252416 bytes
+entropy   6.510 bits/byte
 format    PE (Windows) · X86_64 · 64-bit
-entry     0x67740
+signed    no
+protect   + ASLR  + High-entropy ASLR  + DEP  - Control Flow Guard
 
 sections (5):
   name        offset       size  entropy
-  .text        0x400     430592     6.22  code / binary data
-  .rdata     0x69600     109568     5.65  code / binary data
-  .data      0x84200        512     2.03  mostly padding
-  .pdata     0x84400      13824     5.77  code / binary data
-  .reloc     0x87a00       2048     5.37  text / structured data
+  .text        0x400     108032     6.46  code / binary data
+  .rdata     0x1aa00     136704     6.20  code / binary data
+  .data      0x3c000        512     1.91  mostly padding
 
-imports   98 functions from 11 libraries
-  KERNEL32.dll           SetUnhandledExceptionFilter, IsDebuggerPresent, +53 more
-  bcryptprimitives.dll   ProcessPrng
-  ntdll.dll              NtWriteFile, NtReadFile, RtlNtStatusToDosError`
+imports   97 functions from 11 libraries
+  KERNEL32.dll    FlsSetValue, IsDebuggerPresent, +47 more
+  WS2_32.dll      recv, send, WSAGetLastError, connect +5 more`
 
 function Cli() {
   const [copied, setCopied] = useState(false)
@@ -273,8 +279,7 @@ function NetworkLog() {
         bytes: e.decodedBodySize,
       }
     }
-    const read = () =>
-      setEntries((performance.getEntriesByType('resource') as PerformanceResourceTiming[]).map(toEntry))
+    const read = () => setEntries((performance.getEntriesByType('resource') as PerformanceResourceTiming[]).map(toEntry))
     read()
     const po = new PerformanceObserver(read)
     po.observe({ type: 'resource', buffered: true })
@@ -302,7 +307,7 @@ function NetworkLog() {
         </tbody>
       </table>
       <p className="netlog-foot">
-        {entries.length} requests, every one fetching this site's own files. Analyze something and the count stays put.
+        {entries.length} requests, all downloading this site's own files and samples. None sends anything out.
       </p>
     </div>
   )

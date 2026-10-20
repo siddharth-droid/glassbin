@@ -1,24 +1,31 @@
 # glassbin
 
-**See what a program is made of.** Drop in a Windows, Linux or macOS executable and glassbin maps its
-sections, imports, strings and entropy — in your browser, with nothing uploaded.
+**Know what a program is before you run it.** Drop in a Windows, Linux or macOS executable and glassbin
+checks it for packing, hidden data, risky capabilities and missing exploit protections, then gives you
+the hashes to look it up. It runs in your browser; the file is never uploaded.
 
 **[Try it →](https://siddharth-droid.github.io/glassbin/)**
 
-![The glassbin landing page: a program's bytes shown as hex, turning into an entropy heatmap](docs/landing.png)
+![The glassbin landing page: a drop zone over the bytes of a sample program, with two samples to try](docs/landing.png)
 
-## What it shows
+## What a report gives you
 
-- **Entropy map.** Every cell is a slice of the file, coloured by how random its bytes are. Code reads
-  orange, padding reads dark, and compressed or encrypted data glows near-white — the first sign of a
-  packed or obfuscated program.
-- **Sections.** How the file is laid out (`.text`, `.rdata`, …), with each one's size and entropy.
-  Hover a section to light it up on the map.
-- **Capabilities.** What the program can do — network, process control, registry, anti-debugging —
-  inferred from the system functions it imports, without running it.
-- **Imports and strings.** Searchable, with URLs, file paths and library names picked out.
+- **A verdict and findings, in plain language.** Encrypted or compressed regions, known packer
+  sections, data appended after the program, a suspiciously short import list, code-injection and
+  keylogging capabilities, forged timestamps. Each finding says what it usually means and links to the
+  bytes behind it. glassbin never claims a file is safe or malicious — static analysis can't know.
+- **Hashes.** SHA-256 and SHA-1, copyable, with a one-click VirusTotal lookup (only the hash is sent,
+  and only when you click).
+- **Exploit protections.** ASLR, DEP and Control Flow Guard for Windows; PIE, NX stack, full RELRO
+  and stack canaries for Linux; PIE for macOS. Plus Authenticode signature presence and .NET detection.
+- **Map of the file.** An entropy heatmap and section layout. Click any cell to open its bytes.
+- **Imports, strings and hex.** Capabilities inferred from imports; every readable string, filterable;
+  and a virtualized hex view with go-to-offset that handles large files.
 
-![A report for a test program: an entropy map with a bright band of random data, and its sections](docs/workspace.png)
+![A report for demo-app.exe: verdict, file facts, hashes with a VirusTotal link, and tabs](docs/workspace.png)
+
+The page ships two samples built from this repo: `samples/demo-app` (harmless, but built to trip the
+checks: an embedded random blob, network imports, a URL) and glassbin's own CLI.
 
 ## How it works
 
@@ -28,7 +35,8 @@ All analysis lives in one Rust library, **`glassbin-core`**. Everything else is 
 crates/core   parsing (PE, ELF, Mach-O via goblin), entropy, string extraction — no I/O
 crates/wasm   wasm-bindgen wrapper; the web app runs it in a Web Worker
 crates/cli    the `glassbin` command-line tool
-web/          React + WebGL front end (Vite)
+samples/      demo-app, the landing page's "suspicious" sample
+web/          React front end (Vite): WebGL heatmap, TanStack Virtual for strings and hex
 ```
 
 The browser build copies the file into the WebAssembly module's memory and nowhere else. The landing
@@ -58,7 +66,7 @@ cargo run --release -p glassbin -- path/to/program.exe
 cd web
 npm install
 npm run wasm     # compile the Rust engine to WebAssembly
-npm run sample   # build the sample binary the landing page analyzes
+npm run sample   # build the two sample programs the landing page offers
 npm run dev
 ```
 

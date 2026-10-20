@@ -10,6 +10,8 @@ interface Props {
   highlight: ByteRange | null
   /** Smallest cell width in CSS px; lower packs more columns, for a compact overview. */
   minCellPx?: number
+  /** Called with a byte offset when a cell is clicked — e.g. to open the hex view there. */
+  onPick?: (offset: number) => void
 }
 
 // One full-screen triangle pair; the fragment shader does all the work per pixel.
@@ -86,7 +88,7 @@ function compile(gl: WebGL2RenderingContext, type: number, src: string) {
 /** Wider grids for bigger files, so cells stay a readable size. */
 const columnsFor = (n: number) => (n <= 256 ? 32 : n <= 1024 ? 64 : 128)
 
-export function EntropyMap({ blocks, blockSize, sections, highlight, minCellPx = 7 }: Props) {
+export function EntropyMap({ blocks, blockSize, sections, highlight, minCellPx = 7, onPick }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const [maxCols, setMaxCols] = useState(128)
@@ -208,9 +210,10 @@ export function EntropyMap({ blocks, blockSize, sections, highlight, minCellPx =
         <canvas
           ref={canvasRef}
           className="entropy-canvas"
-          style={{ aspectRatio: `${cols} / ${rows}` }}
           onPointerMove={onMove}
           onPointerLeave={onLeave}
+          onClick={() => onPick && tip && onPick(tip.idx * blockSize)}
+          style={{ aspectRatio: `${cols} / ${rows}`, cursor: onPick ? 'pointer' : 'crosshair' }}
           role="img"
           aria-label={`Entropy heatmap of ${blocks.length} blocks of ${blockSize} bytes`}
         />

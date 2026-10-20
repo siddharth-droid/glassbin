@@ -1,14 +1,14 @@
-import { useEffect, useRef, type RefObject } from 'react'
+import { useEffect, useRef } from 'react'
 import type { Report } from '../types'
 import { entropyRgb } from '../lib/format'
-import { ScrollTrigger, prefersReducedMotion } from '../lib/motion'
+import { prefersReducedMotion } from '../lib/motion'
 import { observeWidth } from '../lib/observeWidth'
 
 interface Props {
   bytes: Uint8Array
   report: Report
-  /** Element whose scroll drives the hex → heatmap transition. */
-  triggerRef: RefObject<HTMLElement | null>
+  /** Turn the hex into the entropy map — e.g. while a file is dragged over the page. */
+  revealed: boolean
 }
 
 const HEX = Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, '0'))
@@ -16,17 +16,24 @@ const HEX = Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, '0'
 interface Cell {
   hex: string
   rgb: [number, number, number]
-  /** 0–1, when this cell flips during the scroll sweep. */
+  /** 0–1, when this cell flips during the sweep. */
   delay: number
 }
 
 /**
- * The whole file squeezed into a grid. Every cell shows the real byte at that position,
- * then — as you scroll — turns into the colour of that region's entropy. It's the product's
- * core idea (bytes → a map) told without a single word.
+ * The whole file squeezed into a grid behind the drop zone. Every cell shows the real byte at
+ * that position; point at it (or drag a file in) and the bytes turn into the colour of their
+ * entropy — the product's core idea, bytes into a map, told without words.
  */
-export function ByteField({ bytes, report, triggerRef }: Props) {
+export function ByteField({ bytes, report, revealed }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const targetRef = useRef(0)
+  const kickRef = useRef<() => void>(() => {})
+
+  useEffect(() => {
+    targetRef.current = revealed ? 1.25 : 0
+    kickRef.current()
+  }, [revealed])
 
   useEffect(() => {
     const canvas = canvasRef.current!
@@ -37,16 +44,17 @@ export function ByteField({ bytes, report, triggerRef }: Props) {
     let cols = 0
     let rows = 0
     let cell = 0
-    let progress = reduce ? 1 : 0
+    let progress = 0
     let pointer: { x: number; y: number } | null = null
     let raf = 0
 
     // Sized from the parent: the canvas itself snaps to whole cells, so observing it would loop.
     const layout = () => {
-      const w = canvas.parentElement!.clientWidth
+      const host = canvas.parentElement!
+      const w = host.clientWidth
       cell = w < 560 ? 20 : 26
       cols = Math.floor(w / cell)
-      rows = w < 560 ? 14 : 11
+      rows = Math.max(6, Math.floor(host.clientHeight / cell))
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
       canvas.width = Math.round(cols * cell * dpr)
       canvas.height = Math.round(rows * cell * dpr)
@@ -79,7 +87,6 @@ export function ByteField({ bytes, report, triggerRef }: Props) {
     }
 
     const draw = () => {
-      raf = 0
       ctx.clearRect(0, 0, cols * cell, rows * cell)
       ctx.font = `${cell < 24 ? 9 : 11}px 'Martian Mono Variable', ui-monospace, monospace`
       ctx.textAlign = 'center'
@@ -91,7 +98,7 @@ export function ByteField({ bytes, report, triggerRef }: Props) {
         const c = cells[i]
         const x = (i % cols) * cell
         const y = Math.floor(i / cols) * cell
-        // How "revealed" this cell is: scroll sweep, plus a soft spotlight under the pointer.
+        // How "revealed" this cell is: the sweep, plus a soft spotlight under the pointer.
         let t = Math.min(1, Math.max(0, (progress - c.delay * 0.8) / 0.2))
         if (pointer) {
           const d = Math.hypot(x + cell / 2 - pointer.x, y + cell / 2 - pointer.y)
@@ -110,26 +117,25 @@ export function ByteField({ bytes, report, triggerRef }: Props) {
       }
     }
     const requestDraw = () => {
-      if (!raf) raf = requestAnimationFrame(draw)
+      if (!raf) raf = requestAnimationFrame(step)
     }
+    // Ease the sweep toward its target each frame; stop drawing once it arrives.
+    const step = () => {
+      raf = 0
+      const target = targetRef.current
+      progress = reduce ? target : progress + (target - progress) * 0.12
+      if (Math.abs(target - progress) < 0.002) progress = target
+      draw()
+      if (progress !== target) requestDraw()
+    }
+    kickRef.current = requestDraw
 
     const stopObserving = observeWidth(canvas.parentElement!, layout)
     // The canvas font comes from a webfont; redraw once it has loaded.
     document.fonts.ready.then(requestDraw)
 
-    const st = reduce
-      ? null
-      : ScrollTrigger.create({
-          trigger: triggerRef.current,
-          start: 'top top',
-          end: '+=75%',
-          scrub: true,
-          onUpdate: (self) => {
-            progress = self.progress * 1.25
-            requestDraw()
-          },
-        })
-
+    // Listen on the host: the drop zone's text and buttons sit on top of the canvas.
+    const host = canvas.parentElement!
     const onMove = (e: PointerEvent) => {
       const r = canvas.getBoundingClientRect()
       pointer = { x: e.clientX - r.left, y: e.clientY - r.top }
@@ -140,25 +146,23 @@ export function ByteField({ bytes, report, triggerRef }: Props) {
       requestDraw()
     }
     if (!reduce) {
-      canvas.addEventListener('pointermove', onMove)
-      canvas.addEventListener('pointerleave', onLeave)
+      host.addEventListener('pointermove', onMove)
+      host.addEventListener('pointerleave', onLeave)
     }
 
     return () => {
       stopObserving()
-      st?.kill()
       cancelAnimationFrame(raf)
-      canvas.removeEventListener('pointermove', onMove)
-      canvas.removeEventListener('pointerleave', onLeave)
+      host.removeEventListener('pointermove', onMove)
+      host.removeEventListener('pointerleave', onLeave)
     }
-  }, [bytes, report, triggerRef])
+  }, [bytes, report])
 
   return (
     <canvas
       ref={canvasRef}
       className="bytefield"
-      role="img"
-      aria-label="The bytes of glassbin.exe as hexadecimal, turning into a colour map of their entropy"
+      aria-hidden="true"
     />
   )
 }

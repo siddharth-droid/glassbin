@@ -24,6 +24,25 @@ export interface BinaryInfo {
   libraries: string[]
   imports: Import[]
   exports: string[]
+  protections: Protection[]
+  /** PE only: an Authenticode signature is attached (not that it's valid). */
+  signed: boolean | null
+  /** PE only: linker build time, Unix seconds. A hint — easily faked. */
+  buildTime: number | null
+  dotnet: boolean
+  /** ELF only: symbol table removed. */
+  stripped: boolean | null
+}
+
+export interface Protection {
+  name: string
+  enabled: boolean
+  about: string
+}
+
+export interface Hashes {
+  sha256: string
+  sha1: string
 }
 
 export interface FoundString {

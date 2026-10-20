@@ -12,6 +12,7 @@ use std::fmt;
 use goblin::{Object, elf, mach, pe};
 
 use crate::entropy::shannon_entropy;
+use crate::security::{self, Protection};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize), serde(rename_all = "lowercase"))]
@@ -62,6 +63,17 @@ pub struct BinaryInfo {
     pub libraries: Vec<String>,
     pub imports: Vec<Import>,
     pub exports: Vec<String>,
+    /// Exploit mitigations (ASLR, DEP, PIE, …) and whether each is on.
+    pub protections: Vec<Protection>,
+    /// PE only: whether an Authenticode signature is attached (not whether it's valid).
+    pub signed: Option<bool>,
+    /// PE only: the build time stamped by the linker, in Unix seconds. Easily faked, and some
+    /// toolchains write a hash here instead, so treat it as a hint.
+    pub build_time: Option<u32>,
+    /// PE only: a .NET assembly.
+    pub dotnet: bool,
+    /// ELF only: the symbol table has been removed.
+    pub stripped: Option<bool>,
 }
 
 /// Our own error type. Callers get one enum to `match` on, instead of goblin's internals.
@@ -195,6 +207,11 @@ fn from_pe(pe: &pe::PE, bytes: &[u8]) -> BinaryInfo {
             .iter()
             .filter_map(|e| e.name.map(str::to_string))
             .collect(),
+        protections: security::pe_protections(pe),
+        signed: Some(security::pe_is_signed(pe)),
+        build_time: Some(pe.header.coff_header.time_date_stamp).filter(|&t| t != 0),
+        dotnet: security::pe_is_dotnet(pe),
+        stripped: None,
     }
 }
 
@@ -246,6 +263,11 @@ fn from_elf(elf: &elf::Elf, bytes: &[u8]) -> BinaryInfo {
         libraries: elf.libraries.iter().map(|s| s.to_string()).collect(),
         imports,
         exports,
+        protections: security::elf_protections(elf),
+        signed: None,
+        build_time: None,
+        dotnet: false,
+        stripped: Some(security::elf_is_stripped(elf)),
     }
 }
 
@@ -292,6 +314,11 @@ fn from_macho(macho: &mach::MachO) -> Result<BinaryInfo, ParseError> {
             .collect(),
         imports,
         exports,
+        protections: security::macho_protections(macho),
+        signed: None,
+        build_time: None,
+        dotnet: false,
+        stripped: None,
     })
 }
 

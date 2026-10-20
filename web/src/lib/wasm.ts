@@ -1,4 +1,4 @@
-import type { Report } from '../types'
+import type { Hashes, Report } from '../types'
 import type { WorkerRequest, WorkerResponse } from './analyzer.worker'
 
 /** Bigger files are refused up front: the bytes are copied into WASM memory, which has limits. */
@@ -8,7 +8,10 @@ const TIMEOUT_MS = 20_000
 
 export interface Analysis {
   report: Report
+  hashes: Hashes
   ms: number
+  /** The file's bytes, back from the worker — for the hex view. */
+  bytes: Uint8Array
 }
 
 /** An error whose message is safe and useful to show to the person as-is. */
@@ -48,7 +51,7 @@ function getWorker(): Worker {
     pending.delete(msg.id)
     clearTimeout(p.timer)
     if (msg.ok) {
-      p.resolve({ report: msg.report, ms: msg.ms })
+      p.resolve({ report: msg.report, hashes: msg.hashes, ms: msg.ms, bytes: msg.bytes })
     } else {
       // Most likely a panic inside the parser on a malformed file. Report it, then start clean.
       console.error('glassbin engine error:', msg.error)
@@ -70,10 +73,10 @@ export function loadWasm() {
 }
 
 /**
- * Analyze bytes in the worker. Pass `transfer: true` to hand the buffer over without copying
- * (the caller's `bytes` becomes unusable); leave it off when you still need the bytes.
+ * Analyze bytes in the worker. The buffer is handed over without copying and comes back in
+ * the result, so use `analysis.bytes` afterwards, not the array you passed in.
  */
-export function analyzeBytes(bytes: Uint8Array, transfer = false): Promise<Analysis> {
+export function analyzeBytes(bytes: Uint8Array): Promise<Analysis> {
   const w = getWorker()
   const id = nextId++
   return new Promise((resolve, reject) => {
@@ -84,7 +87,7 @@ export function analyzeBytes(bytes: Uint8Array, transfer = false): Promise<Analy
     }, TIMEOUT_MS)
     pending.set(id, { resolve, reject, timer })
     const msg: WorkerRequest = { id, bytes }
-    w.postMessage(msg, transfer ? [bytes.buffer] : [])
+    w.postMessage(msg, [bytes.buffer])
   })
 }
 
@@ -94,5 +97,5 @@ export async function analyzeFile(file: Blob): Promise<Analysis> {
     throw new AnalysisError(`This file is ${mb(file.size)}. glassbin reads files up to ${mb(MAX_FILE_BYTES)} in the browser.`)
   }
   if (file.size === 0) throw new AnalysisError('This file is empty.')
-  return analyzeBytes(new Uint8Array(await file.arrayBuffer()), true)
+  return analyzeBytes(new Uint8Array(await file.arrayBuffer()))
 }

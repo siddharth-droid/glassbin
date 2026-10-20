@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import type { FoundString } from '../types'
 import { classifyString, type StringKind } from '../lib/capabilities'
 import { hex } from '../lib/format'
@@ -10,11 +11,18 @@ const KINDS: { kind: StringKind | 'all'; label: string }[] = [
   { kind: 'library', label: 'Libraries' },
   { kind: 'text', label: 'Text' },
 ]
-const MAX_ROWS = 400
 
-export function Strings({ strings, total }: { strings: FoundString[]; total: number }) {
+interface Props {
+  strings: FoundString[]
+  total: number
+  /** Show this string's bytes in the hex view. */
+  onShow: (s: FoundString) => void
+}
+
+export function Strings({ strings, total, onShow }: Props) {
   const [query, setQuery] = useState('')
   const [kind, setKind] = useState<StringKind | 'all'>('all')
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   const classified = useMemo(() => strings.map((s) => ({ ...s, kind: classifyString(s.text) })), [strings])
   const counts = useMemo(() => {
@@ -22,11 +30,18 @@ export function Strings({ strings, total }: { strings: FoundString[]; total: num
     for (const s of classified) c[s.kind] = (c[s.kind] ?? 0) + 1
     return c
   }, [classified])
-
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return classified.filter((s) => (kind === 'all' || s.kind === kind) && (!q || s.text.toLowerCase().includes(q)))
   }, [classified, kind, query])
+
+  // Only the rows on screen are in the DOM; long strings wrap, so rows are measured.
+  const virtualizer = useVirtualizer({
+    count: filtered.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 28,
+    overscan: 12,
+  })
 
   return (
     <div className="strings">
@@ -34,17 +49,16 @@ export function Strings({ strings, total }: { strings: FoundString[]; total: num
         <input
           className="search"
           type="search"
-          placeholder="Search strings…"
+          placeholder={`Search ${strings.length.toLocaleString()} strings…`}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           aria-label="Search strings"
         />
-        <div className="chips" role="tablist">
+        <div className="chips" role="group" aria-label="Filter by kind">
           {KINDS.map(({ kind: k, label }) => (
             <button
               key={k}
-              role="tab"
-              aria-selected={kind === k}
+              aria-pressed={kind === k}
               className={`chip ${kind === k ? 'chip--on' : ''}`}
               onClick={() => setKind(k)}
               disabled={!counts[k]}
@@ -54,17 +68,32 @@ export function Strings({ strings, total }: { strings: FoundString[]; total: num
           ))}
         </div>
       </div>
-      <ul className="string-list mono">
-        {filtered.slice(0, MAX_ROWS).map((s) => (
-          <li key={s.offset} className={`str str--${s.kind}`}>
-            <span className="muted">{hex(s.offset)}</span>
-            <span className="str-text">{s.text}</span>
-          </li>
-        ))}
-      </ul>
+
+      <div ref={scrollRef} className="string-scroll">
+        {filtered.length === 0 && <p className="muted empty">No strings match.</p>}
+        <ul className="string-list mono" style={{ height: virtualizer.getTotalSize() }}>
+          {virtualizer.getVirtualItems().map((item) => {
+            const s = filtered[item.index]
+            return (
+              <li
+                key={s.offset}
+                ref={virtualizer.measureElement}
+                data-index={item.index}
+                className={`str str--${s.kind}`}
+                style={{ transform: `translateY(${item.start}px)` }}
+              >
+                <button onClick={() => onShow(s)} title="Show in hex">
+                  <span className="str-off">{hex(s.offset)}</span>
+                  <span className="str-text">{s.text}</span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
       <p className="muted small">
-        Showing {Math.min(filtered.length, MAX_ROWS)} of {filtered.length} matches
-        {total > strings.length && ` · first ${strings.length} of ${total} strings in the file`}
+        {filtered.length.toLocaleString()} shown. Click a string to see it in the hex view.
+        {total > strings.length && ` The file has ${total.toLocaleString()} strings; the first ${strings.length.toLocaleString()} are listed.`}
       </p>
     </div>
   )

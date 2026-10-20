@@ -54,6 +54,18 @@ fn print_structure(info: &BinaryInfo) {
     let bits = if info.is_64 { 64 } else { 32 };
     println!("format    {} · {} · {bits}-bit", info.format, info.arch);
     println!("entry     0x{:x}", info.entry_point);
+    if let Some(signed) = info.signed {
+        println!(
+            "signed    {}",
+            if signed { "yes (signature present)" } else { "no" }
+        );
+    }
+    let protections: Vec<String> = info
+        .protections
+        .iter()
+        .map(|p| format!("{} {}", if p.enabled { "+" } else { "-" }, p.name))
+        .collect();
+    println!("protect   {}", protections.join("  "));
 
     println!("\nsections ({}):", info.sections.len());
     println!(

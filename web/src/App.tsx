@@ -2,32 +2,32 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { AnalysisError, analyzeBytes, analyzeFile, loadWasm, type Analysis } from './lib/wasm'
 import { prefersReducedMotion } from './lib/motion'
-import { SAMPLE_NAME, SAMPLE_URL } from './lib/site'
-import { Landing, type Sample } from './landing/Landing'
+import { SAMPLES, sampleUrl } from './lib/site'
+import { Landing, type Preview } from './landing/Landing'
 import { Workspace } from './workspace/Workspace'
 
 type View =
   | { kind: 'landing' }
   | { kind: 'busy'; name: string }
-  | ({ kind: 'report'; name: string } & Analysis)
+  | { kind: 'report'; name: string; analysis: Analysis }
   | { kind: 'error'; message: string }
 
 export default function App() {
   const [view, setView] = useState<View>({ kind: 'landing' })
-  const [sample, setSample] = useState<Sample | null>(null)
+  const [preview, setPreview] = useState<Preview | null>(null)
   const [dragging, setDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Analyze the sample on load: the landing page is built from this live result.
+  // Analyze the first sample on load: the landing page's report preview is this live result.
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      await loadWasm()
-      const res = await fetch(SAMPLE_URL)
+      loadWasm()
+      const name = SAMPLES[0].file
+      const res = await fetch(sampleUrl(name))
       if (!res.ok) return
-      const bytes = new Uint8Array(await res.arrayBuffer())
-      const analysis = await analyzeBytes(bytes)
-      if (!cancelled) setSample({ ...analysis, bytes })
+      const analysis = await analyzeBytes(new Uint8Array(await res.arrayBuffer()))
+      if (!cancelled) setPreview({ name, analysis })
     })()
     return () => {
       cancelled = true
@@ -57,7 +57,7 @@ export default function App() {
       show({ kind: 'busy', name })
       try {
         const analysis = await analyzeFile(file)
-        show({ kind: 'report', name, ...analysis })
+        show({ kind: 'report', name, analysis })
         if (location.hash !== '#report') history.pushState(null, '', '#report')
       } catch (e) {
         const message =
@@ -111,7 +111,17 @@ export default function App() {
   }, [openFile])
 
   const open = () => inputRef.current?.click()
-  const openSample = () => sample && openFile(SAMPLE_NAME, new Blob([sample.bytes as BlobPart]))
+  const openSample = async (file: string) => {
+    // The previewed sample is already analyzed; reuse it.
+    if (preview?.name === file) {
+      show({ kind: 'report', name: file, analysis: preview.analysis })
+      if (location.hash !== '#report') history.pushState(null, '', '#report')
+      return
+    }
+    const res = await fetch(sampleUrl(file))
+    if (!res.ok) return show({ kind: 'error', message: `Couldn't load the sample ${file}.` })
+    openFile(file, await res.blob())
+  }
   const home = () => {
     if (location.hash === '#report') history.back()
     else show({ kind: 'landing' })
@@ -130,10 +140,8 @@ export default function App() {
         }}
       />
 
-      {view.kind === 'landing' && <Landing sample={sample} onOpen={open} onSample={openSample} />}
-      {view.kind === 'report' && (
-        <Workspace name={view.name} report={view.report} ms={view.ms} onOpen={open} onHome={home} />
-      )}
+      {view.kind === 'landing' && <Landing preview={preview} dragging={dragging} onOpen={open} onSample={openSample} />}
+      {view.kind === 'report' && <Workspace name={view.name} analysis={view.analysis} onOpen={open} onHome={home} />}
       {view.kind === 'busy' && <div className="status">Reading {view.name}…</div>}
       {view.kind === 'error' && (
         <div className="status status--error">
