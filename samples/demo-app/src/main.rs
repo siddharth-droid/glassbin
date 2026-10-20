@@ -5,10 +5,10 @@
 use std::io::{Read, Write};
 use std::net::TcpStream;
 
-/// 64 KB of pseudo-random bytes (written by build.rs) — looks exactly like encrypted data.
+/// 64 KB of pseudo-random bytes (written by build.rs): looks exactly like encrypted data.
 static RANDOM_BLOB: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/random.bin"));
 
-/// 32 KB of (almost) zeros stored in the file — shows up as dark padding on the entropy map.
+/// 32 KB of (almost) zeros stored in the file: shows up as dark padding on the entropy map.
 /// The one non-zero byte stops the compiler moving it to .bss, which takes no space on disk.
 static ZEROS: [u8; 32 * 1024] = {
     let mut a = [0u8; 32 * 1024];

@@ -8,7 +8,7 @@ interface Props {
   pinned: number | null
   onHover: (index: number | null) => void
   onPin: (index: number | null) => void
-  /** Just the bar, labelled underneath — no table. Used in the landing-page tour. */
+  /** Just the bar, labelled underneath: no table. Used in the landing-page tour. */
   compact?: boolean
 }
 
@@ -75,7 +75,7 @@ export function SectionMap({ sections, fileSize, active, pinned, onHover, onPin,
                 </td>
                 <td className="mono num muted">{hex(s.fileOffset, 6)}</td>
                 <td className="mono num">{formatBytes(s.fileSize)}</td>
-                <td className="mono num">{s.fileSize ? s.entropy.toFixed(2) : '—'}</td>
+                <td className="mono num">{s.fileSize ? s.entropy.toFixed(2) : 'n/a'}</td>
                 <td className="muted">{entropyLabel(s.entropy, s.fileSize)}</td>
               </tr>
             ))}

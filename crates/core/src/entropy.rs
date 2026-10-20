@@ -1,10 +1,10 @@
 //! Shannon entropy: how "random" a run of bytes looks, from 0.0 to 8.0 bits per byte.
 //!
 //! Rough guide:
-//!   0.0       – all the same byte (padding, zeroed memory)
-//!   ~4.5–5.5  – text, ordinary code
-//!   ~6–7      – machine code, mixed data
-//!   ~7.9+     – compressed or encrypted (packers, embedded zips, keys)
+//!   0.0          all the same byte (padding, zeroed memory)
+//!   4.5 to 5.5   text, ordinary code
+//!   6 to 7       machine code, mixed data
+//!   7.9 and up   compressed or encrypted (packers, embedded zips, keys)
 
 /// Entropy of a whole slice, in bits per byte.
 pub fn shannon_entropy(bytes: &[u8]) -> f64 {
@@ -13,7 +13,7 @@ pub fn shannon_entropy(bytes: &[u8]) -> f64 {
     }
 
     // Count how often each of the 256 possible byte values appears.
-    // A fixed-size array lives on the stack — no heap allocation.
+    // A fixed-size array lives on the stack: no heap allocation.
     let mut counts = [0u64; 256];
     for &b in bytes {
         counts[b as usize] += 1;
@@ -31,13 +31,13 @@ pub fn shannon_entropy(bytes: &[u8]) -> f64 {
 }
 
 /// Split the input into `block_size` chunks and return the entropy of each one.
-/// This is what the entropy heatmap in the UI will draw — one cell per block.
+/// This is what the entropy heatmap in the UI will draw: one cell per block.
 pub fn block_entropy(bytes: &[u8], block_size: usize) -> Vec<f64> {
     assert!(block_size > 0, "block_size must be > 0");
     bytes.chunks(block_size).map(shannon_entropy).collect()
 }
 
-/// Like [`block_entropy`], one value per `step` bytes — but each value is measured over a
+/// Like [`block_entropy`], one value per `step` bytes, but each value is measured over a
 /// `window` of bytes centred on that step.
 ///
 /// Why: a run of `n` bytes can hold at most `n` distinct values, so its entropy can never

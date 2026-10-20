@@ -29,7 +29,7 @@ fn main() {
     println!("size      {} bytes", bytes.len());
     println!("entropy   {:.3} bits/byte", shannon_entropy(&bytes));
 
-    // Not every file is an executable — entropy and strings still work on anything,
+    // Not every file is an executable: entropy and strings still work on anything,
     // so a parse failure is a note, not a fatal error.
     match parse(&bytes) {
         Ok(info) => print_structure(&info),
@@ -124,7 +124,7 @@ fn entropy_label(entropy: f64, size: u64) -> &'static str {
     }
 }
 
-/// Draw entropy values (0–8) as a row of block characters — a terminal preview
+/// Draw entropy values (0 to 8) as a row of block characters: a terminal preview
 /// of the heatmap the web UI will render.
 fn sparkline(values: &[f64]) -> String {
     const BARS: [char; 8] = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];

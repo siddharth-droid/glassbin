@@ -1,4 +1,4 @@
-//! Find human-readable text hidden inside a binary — the same idea as the Unix `strings` tool.
+//! Find human-readable text hidden inside a binary: the same idea as the Unix `strings` tool.
 //! Error messages, URLs, file paths and class names often reveal what a program does.
 
 /// A run of printable ASCII found in the file.
@@ -52,7 +52,7 @@ pub fn is_meaningful(text: &str) -> bool {
 
 /// Drop strings whose exact text appears more than `max_repeats` times. Real messages appear
 /// once or twice; byte patterns that repeat everywhere are code. The classic example is
-/// `UAWAVAUATVWSH` — x86-64 for "push these registers", the opening of many functions.
+/// `UAWAVAUATVWSH`: x86-64 for "push these registers", the opening of many functions.
 pub fn drop_repeated(strings: Vec<FoundString>, max_repeats: usize) -> Vec<FoundString> {
     use std::collections::HashMap;
     let mut counts: HashMap<&str, usize> = HashMap::new();

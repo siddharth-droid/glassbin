@@ -18,11 +18,12 @@ interface HeaderProps {
   report: Report
   hashes: Hashes
   verdict: Verdict
+  findings: Finding[]
   ms: number
 }
 
 /** The top of a report: what the file is, the verdict, and the hashes to look it up by. */
-export function ReportHeader({ name, report, hashes, verdict, ms }: HeaderProps) {
+export function ReportHeader({ name, report, hashes, verdict, findings, ms }: HeaderProps) {
   const b = report.binary
   const built = b?.buildTime ? new Date(b.buildTime * 1000) : null
   const plausible = built && built.getUTCFullYear() >= 1995 && built <= new Date()
@@ -34,13 +35,7 @@ export function ReportHeader({ name, report, hashes, verdict, ms }: HeaderProps)
         <p>{describe(report)}</p>
       </div>
 
-      <div className={`verdict verdict--${verdict.severity}`} role="status">
-        <span className="verdict-dot" aria-hidden="true" />
-        <div>
-          <strong>{verdict.headline}</strong>
-          <p>{verdict.summary}</p>
-        </div>
-      </div>
+      <VerdictLine verdict={verdict} findings={findings} />
 
       <dl className="facts-row">
         <Fact k="Entropy">
@@ -71,6 +66,34 @@ export function ReportHeader({ name, report, hashes, verdict, ms }: HeaderProps)
         </p>
       </div>
     </header>
+  )
+}
+
+const SEVERITY_WORD = { alert: 'serious', warn: 'to check', info: 'note' } as const
+
+/**
+ * The verdict, in the product's own visual language: one square per finding, coloured by
+ * severity like the cells of the entropy map, under a plain headline.
+ */
+export function VerdictLine({ verdict, findings }: { verdict: Verdict; findings: Finding[] }) {
+  const tally = (['alert', 'warn', 'info'] as const)
+    .map((s) => [s, findings.filter((f) => f.severity === s).length] as const)
+    .filter(([, n]) => n > 0)
+  return (
+    <div className={`verdict verdict--${verdict.severity}`} role="status">
+      <div className="verdict-tally">
+        <span className="verdict-squares" aria-hidden="true">
+          {findings.map((f, i) => (
+            <span key={i} className={`sq sq--${f.severity}`} />
+          ))}
+        </span>
+        <span className="verdict-count">
+          {tally.length ? tally.map(([s, n]) => `${n} ${SEVERITY_WORD[s]}${s === 'info' && n > 1 ? 's' : ''}`).join(', ') : 'no findings'}
+        </span>
+      </div>
+      <strong>{verdict.headline}</strong>
+      <p>{verdict.summary}</p>
+    </div>
   )
 }
 
@@ -105,7 +128,7 @@ function Hash({ label, value }: { label: string; value: string }) {
   )
 }
 
-const SEVERITY_LABEL = { alert: 'High', warn: 'Check', info: 'Note' } as const
+const SEVERITY_LABEL = { alert: 'Serious', warn: 'Worth checking', info: 'Note' } as const
 
 export function FindingsList({ findings, onShow }: { findings: Finding[]; onShow: (f: Finding) => void }) {
   if (!findings.length) return <p className="muted">Nothing to report.</p>
@@ -113,7 +136,8 @@ export function FindingsList({ findings, onShow }: { findings: Finding[]; onShow
     <ul className="findings">
       {findings.map((f, i) => (
         <li key={i} className={`finding finding--${f.severity}`}>
-          <span className="finding-sev">{SEVERITY_LABEL[f.severity]}</span>
+          <span className={`sq sq--${f.severity} finding-sq`} title={SEVERITY_LABEL[f.severity]} />
+          <span className="sr-only">{SEVERITY_LABEL[f.severity]}:</span>
           <div className="finding-body">
             <strong>{f.title}</strong>
             <p>{f.detail}</p>
@@ -135,8 +159,8 @@ export function ProtectionList({ binary }: { binary: BinaryInfo }) {
     <ul className="protections">
       {binary.protections.map((p) => (
         <li key={p.name} className={p.enabled ? 'is-on' : 'is-off'}>
-          <span className="prot-mark" aria-hidden="true">
-            {p.enabled ? '✓' : '✕'}
+          <span className={`prot-state ${p.enabled ? 'is-on' : 'is-off'}`} aria-hidden="true">
+            {p.enabled ? 'On' : 'Off'}
           </span>
           <div>
             <strong>

@@ -10,7 +10,7 @@ export interface Analysis {
   report: Report
   hashes: Hashes
   ms: number
-  /** The file's bytes, back from the worker — for the hex view. */
+  /** The file's bytes, back from the worker: for the hex view. */
   bytes: Uint8Array
 }
 

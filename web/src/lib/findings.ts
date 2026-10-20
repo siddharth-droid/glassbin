@@ -4,7 +4,7 @@ import { formatBytes } from './format'
 
 // Turn a report into what a person actually wants to know: is anything here worth a look,
 // and why. Static analysis can't prove a file safe or malicious, so the wording never claims
-// either — it says what was seen and what that usually means.
+// either; it says what was seen and what that usually means.
 
 export type Severity = 'alert' | 'warn' | 'info'
 
@@ -87,7 +87,7 @@ export function analyzeFindings(report: Report): Finding[] {
       out.push({
         severity: 'warn',
         title: `Only ${b.imports.length} imported functions`,
-        detail: 'Ordinary Windows programs import dozens. A short list, especially with LoadLibrary and GetProcAddress, usually means the program looks up what it needs at run time — a common packer trick.',
+        detail: 'Ordinary Windows programs import dozens. A short list, especially with LoadLibrary and GetProcAddress, usually means the program looks up what it needs at run time, a common packer trick.',
       })
     }
 
@@ -135,7 +135,7 @@ export function analyzeFindings(report: Report): Finding[] {
       out.push({
         severity: 'info',
         title: 'Checks whether it is being debugged',
-        detail: `Imports ${anti.functions.join(', ')}. Malware uses this to hide from analysts — but Microsoft's C runtime calls IsDebuggerPresent in nearly every Windows program, so on its own it means little.`,
+        detail: `Imports ${anti.functions.join(', ')}. Malware uses this to hide from analysts, but Microsoft's C runtime calls IsDebuggerPresent in nearly every Windows program, so on its own it means little.`,
       })
     }
 
@@ -204,7 +204,7 @@ export function verdictFor(findings: Finding[], report: Report): Verdict {
     return {
       severity: 'alert',
       headline: 'Worth a closer look',
-      summary: `${count(alerts, 'strong sign')} of packing, hiding or tampering${warns ? `, and ${count(warns, 'thing')} to check` : ''}. That's typical of malware — and of some legitimate protected software.`,
+      summary: `${count(alerts, 'strong sign')} of packing, hiding or tampering${warns ? `, and ${count(warns, 'thing')} to check` : ''}. That's typical of malware, and of some legitimate protected software.`,
     }
   if (warns)
     return {
@@ -216,7 +216,7 @@ export function verdictFor(findings: Finding[], report: Report): Verdict {
     severity: 'clear',
     headline: report.binary ? 'Nothing unusual' : 'Not a program',
     summary: report.binary
-      ? 'No signs of packing, hidden data or risky capabilities. Static checks can’t prove a file is safe — check the SHA-256 against a reputation service before running anything you don’t trust.'
+      ? 'No signs of packing, hidden data or risky capabilities. Static checks can’t prove a file is safe, so check the SHA-256 against a reputation service before running anything you don’t trust.'
       : "glassbin couldn't read this as a Windows, Linux or macOS program. Its entropy and strings are below.",
   }
 }

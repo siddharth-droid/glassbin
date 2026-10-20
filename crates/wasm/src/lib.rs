@@ -1,5 +1,5 @@
 //! The browser entry point. `wasm-bindgen` generates the JavaScript glue so the web app can
-//! call `analyze(bytes)` like a normal JS function — the file never leaves the user's machine.
+//! call `analyze(bytes)` like a normal JS function: the file never leaves the user's machine.
 
 use glassbin_core::{
     BinaryInfo, FoundString, drop_repeated, extract_strings, is_meaningful, parse, shannon_entropy,
@@ -16,7 +16,7 @@ const MIN_WINDOW: usize = 2048;
 const MIN_STRING_LEN: usize = 6;
 /// A string seen more often than this is a code pattern, not text.
 const MAX_REPEATS: usize = 3;
-/// Cap what we send to JS — a big binary can hold hundreds of thousands of strings.
+/// Cap what we send to JS: a big binary can hold hundreds of thousands of strings.
 const MAX_STRINGS: usize = 5000;
 
 #[derive(Serialize)]
@@ -26,7 +26,7 @@ struct Report {
     entropy: f64,
     block_size: usize,
     blocks: Vec<f32>,
-    /// `None` when the file isn't an executable we can parse — the rest still works.
+    /// `None` when the file isn't an executable we can parse: the rest still works.
     binary: Option<BinaryInfo>,
     parse_error: Option<String>,
     string_count: usize,

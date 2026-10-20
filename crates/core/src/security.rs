@@ -1,4 +1,4 @@
-//! Exploit mitigations a program was built with — the checks Microsoft's old BinScope ran.
+//! Exploit mitigations a program was built with: the checks Microsoft's old BinScope ran.
 //! Each one makes a whole class of attack harder; missing ones are worth a second look.
 
 use goblin::{elf, mach, pe};
@@ -55,8 +55,8 @@ pub(crate) fn pe_protections(pe: &pe::PE) -> Vec<Protection> {
     out
 }
 
-/// A PE carries an Authenticode signature in its certificate table. Present ≠ valid — checking
-/// the chain needs the OS's trust store — but unsigned is still a useful fact.
+/// A PE carries an Authenticode signature in its certificate table. Present ≠ valid (checking
+/// the chain needs the OS's trust store), but unsigned is still a useful fact.
 pub(crate) fn pe_is_signed(pe: &pe::PE) -> bool {
     pe.header
         .optional_header
@@ -111,7 +111,7 @@ pub(crate) fn elf_protections(elf: &elf::Elf) -> Vec<Protection> {
     ]
 }
 
-/// Without a symbol table there are no function names to read — normal for release builds,
+/// Without a symbol table there are no function names to read: normal for release builds,
 /// but it makes analysis harder.
 pub(crate) fn elf_is_stripped(elf: &elf::Elf) -> bool {
     elf.syms.is_empty()

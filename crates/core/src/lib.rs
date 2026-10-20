@@ -1,6 +1,6 @@
 //! glassbin-core: the analysis engine shared by the CLI, the browser (WASM) and the server.
 //!
-//! Everything here works on `&[u8]` — a *borrowed* slice of bytes. Functions read the
+//! Everything here works on `&[u8]`: a *borrowed* slice of bytes. Functions read the
 //! file's bytes without taking ownership or copying them, which is what makes this fast.
 
 pub mod entropy;

@@ -5,7 +5,7 @@ import { analyzeFindings, verdictFor } from '../lib/findings'
 import { REPO_URL, SAMPLES } from '../lib/site'
 import { ByteField } from './ByteField'
 import { Glyph } from './Glyph'
-import { FindingsList, ProtectionList, describe } from '../components/Summary'
+import { FindingsList, ProtectionList, VerdictLine, describe } from '../components/Summary'
 import { EntropyMap } from '../components/EntropyMap'
 
 /** A sample analyzed on page load, shown as a live report preview. */
@@ -90,7 +90,7 @@ export function Landing({ preview, dragging, onOpen, onSample }: Props) {
         <dl className="checks">
           <Check title="Verdict and findings">
             Packed or encrypted code, data hidden after the program, injection and keylogging capabilities, forged
-            timestamps — each explained, with a link to the bytes.
+            timestamps. Each one explained, with a link to the bytes.
           </Check>
           <Check title="Hashes, ready to look up">
             SHA-256 and SHA-1 with one click to VirusTotal. Only the hash leaves the page, and only if you click.
@@ -181,13 +181,7 @@ function ReportPreview({ preview, onOpen }: { preview: Preview; onOpen: () => vo
           Open the full report
         </button>
       </div>
-      <div className={`verdict verdict--${verdict.severity}`}>
-        <span className="verdict-dot" aria-hidden="true" />
-        <div>
-          <strong>{verdict.headline}</strong>
-          <p>{verdict.summary}</p>
-        </div>
-      </div>
+      <VerdictLine verdict={verdict} findings={findings} />
       <div className="preview-grid">
         <FindingsList findings={findings.slice(0, 3)} onShow={onOpen} />
         <div className="preview-side">
@@ -229,7 +223,7 @@ function Cli() {
       setCopied(true)
       setTimeout(() => setCopied(false), 1600)
     } catch {
-      /* clipboard unavailable — the text is still selectable */
+      /* clipboard unavailable: the text is still selectable */
     }
   }
   return (
@@ -301,7 +295,7 @@ function NetworkLog() {
             <tr key={i}>
               <td className="mono">{e.name}</td>
               <td className="dim">{e.kind}</td>
-              <td className="mono num">{e.bytes ? formatBytes(e.bytes) : '—'}</td>
+              <td className="mono num">{e.bytes ? formatBytes(e.bytes) : 'cached'}</td>
             </tr>
           ))}
         </tbody>

@@ -7,7 +7,7 @@ import { observeWidth } from '../lib/observeWidth'
 interface Props {
   bytes: Uint8Array
   report: Report
-  /** Turn the hex into the entropy map — e.g. while a file is dragged over the page. */
+  /** Turn the hex into the entropy map, e.g. while a file is dragged over the page. */
   revealed: boolean
 }
 
@@ -16,14 +16,14 @@ const HEX = Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, '0'
 interface Cell {
   hex: string
   rgb: [number, number, number]
-  /** 0–1, when this cell flips during the sweep. */
+  /** 0 to 1, when this cell flips during the sweep. */
   delay: number
 }
 
 /**
  * The whole file squeezed into a grid behind the drop zone. Every cell shows the real byte at
  * that position; point at it (or drag a file in) and the bytes turn into the colour of their
- * entropy — the product's core idea, bytes into a map, told without words.
+ * entropy: the product's core idea, bytes into a map, told without words.
  */
 export function ByteField({ bytes, report, revealed }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)

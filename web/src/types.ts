@@ -27,7 +27,7 @@ export interface BinaryInfo {
   protections: Protection[]
   /** PE only: an Authenticode signature is attached (not that it's valid). */
   signed: boolean | null
-  /** PE only: linker build time, Unix seconds. A hint — easily faked. */
+  /** PE only: linker build time, Unix seconds. A hint, easily faked. */
   buildTime: number | null
   dotnet: boolean
   /** ELF only: symbol table removed. */

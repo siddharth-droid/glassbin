@@ -13,7 +13,7 @@ the hashes to look it up. It runs in your browser; the file is never uploaded.
 - **A verdict and findings, in plain language.** Encrypted or compressed regions, known packer
   sections, data appended after the program, a suspiciously short import list, code-injection and
   keylogging capabilities, forged timestamps. Each finding says what it usually means and links to the
-  bytes behind it. glassbin never claims a file is safe or malicious — static analysis can't know.
+  bytes behind it. glassbin never claims a file is safe or malicious, because static analysis can't know.
 - **Hashes.** SHA-256 and SHA-1, copyable, with a one-click VirusTotal lookup (only the hash is sent,
   and only when you click).
 - **Exploit protections.** ASLR, DEP and Control Flow Guard for Windows; PIE, NX stack, full RELRO
@@ -32,7 +32,7 @@ checks: an embedded random blob, network imports, a URL) and glassbin's own CLI.
 All analysis lives in one Rust library, **`glassbin-core`**. Everything else is a thin shell around it:
 
 ```
-crates/core   parsing (PE, ELF, Mach-O via goblin), entropy, string extraction — no I/O
+crates/core   parsing (PE, ELF, Mach-O via goblin), entropy, string extraction; no I/O
 crates/wasm   wasm-bindgen wrapper; the web app runs it in a Web Worker
 crates/cli    the `glassbin` command-line tool
 samples/      demo-app, the landing page's "suspicious" sample
@@ -81,4 +81,4 @@ from the repository root, on Linux or macOS.
 
 ## Licence
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).

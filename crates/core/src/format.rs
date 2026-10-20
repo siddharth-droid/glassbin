@@ -1,8 +1,8 @@
-//! Parse an executable's structure — format, architecture, sections, imports, exports —
+//! Parse an executable's structure (format, architecture, sections, imports, exports)
 //! into one format-neutral summary. The three big formats:
-//!   PE     – Windows (.exe, .dll)
-//!   ELF    – Linux, Android
-//!   Mach-O – macOS, iOS
+//!   PE      Windows (.exe, .dll)
+//!   ELF     Linux, Android
+//!   Mach-O  macOS, iOS
 //!
 //! `goblin` does the heavy lifting; our job is to flatten its three different shapes
 //! into one `BinaryInfo` the CLI and UI can render without caring which format it was.
@@ -96,7 +96,7 @@ impl fmt::Display for ParseError {
 
 impl std::error::Error for ParseError {}
 
-// Implementing `From` lets us use `?` on goblin results — the error converts automatically.
+// Implementing `From` lets us use `?` on goblin results: the error converts automatically.
 impl From<goblin::error::Error> for ParseError {
     fn from(e: goblin::error::Error) -> Self {
         ParseError::Malformed(e)
@@ -116,14 +116,14 @@ pub fn parse(bytes: &[u8]) -> Result<BinaryInfo, ParseError> {
 }
 
 /// Entropy of `bytes[offset..offset + size]`, or 0.0 if the range is out of bounds
-/// (malformed files lie about their sizes — never trust them blindly).
+/// (malformed files lie about their sizes: never trust them blindly).
 fn range_entropy(bytes: &[u8], offset: u64, size: u64) -> f64 {
     let start = offset as usize;
     let end = start.saturating_add(size as usize);
     bytes.get(start..end).map_or(0.0, shannon_entropy)
 }
 
-/// Some Windows DLLs are commonly imported by *ordinal* (a number) instead of by name — the
+/// Some Windows DLLs are commonly imported by *ordinal* (a number) instead of by name: the
 /// Winsock library above all, which Rust's `std::net` uses. Its ordinals have been fixed since
 /// Windows 95, so we can translate them back. Without this, networking code is invisible.
 fn known_ordinal(dll: &str, ordinal: u16) -> Option<&'static str> {
@@ -328,8 +328,8 @@ mod tests {
 
     #[test]
     fn parses_its_own_test_binary() {
-        // The test runner is itself an executable — PE on Windows, ELF on Linux,
-        // Mach-O on macOS — so this test works on every platform.
+        // The test runner is itself an executable: PE on Windows, ELF on Linux,
+        // Mach-O on macOS, so this test works on every platform.
         let bytes = std::fs::read(std::env::current_exe().unwrap()).unwrap();
         let info = parse(&bytes).expect("own executable should parse");
         assert!(!info.sections.is_empty());

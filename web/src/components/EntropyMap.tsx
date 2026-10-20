@@ -10,7 +10,7 @@ interface Props {
   highlight: ByteRange | null
   /** Smallest cell width in CSS px; lower packs more columns, for a compact overview. */
   minCellPx?: number
-  /** Called with a byte offset when a cell is clicked — e.g. to open the hex view there. */
+  /** Called with a byte offset when a cell is clicked, e.g. to open the hex view there. */
   onPick?: (offset: number) => void
 }
 
@@ -130,7 +130,7 @@ export function EntropyMap({ blocks, blockSize, sections, highlight, minCellPx =
     gl.enableVertexAttribArray(loc)
     gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0)
 
-    // Entropy 0–8 → byte 0–255, one texel per block.
+    // Entropy 0 to 8 → byte 0 to 255, one texel per block.
     const data = new Uint8Array(cols * rows)
     blocks.forEach((e, i) => (data[i] = Math.round((e / 8) * 255)))
     const tex = gl.createTexture()

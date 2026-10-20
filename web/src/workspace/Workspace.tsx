@@ -70,7 +70,7 @@ export function Workspace({ name, analysis, onOpen, onHome }: Props) {
       </header>
 
       <div className="report">
-        <ReportHeader name={name} report={report} hashes={hashes} verdict={verdict} ms={ms} />
+        <ReportHeader name={name} report={report} hashes={hashes} verdict={verdict} findings={findings} ms={ms} />
 
         <div className="tabs" role="tablist" aria-label="Report sections">
           {tabs.map((t, i) => (

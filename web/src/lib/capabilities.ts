@@ -1,7 +1,7 @@
 import type { Import } from '../types'
 
 // Infer what a program can *do* from the system functions it imports.
-// This is the same first step a malware analyst takes — and it works without running the file.
+// This is the same first step a malware analyst takes, and it works without running the file.
 
 interface Rule {
   tag: string
@@ -33,7 +33,7 @@ export interface Capability {
 export function detectCapabilities(imports: Import[]): Capability[] {
   const found = new Map<string, Capability>()
   for (const imp of imports) {
-    // Mach-O symbol names start with an underscore (`_open`) — strip it before matching.
+    // Mach-O symbol names start with an underscore (`_open`): strip it before matching.
     const name = imp.name.replace(/^_+/, '')
     for (const rule of RULES) {
       if (!rule.re.test(name)) continue
@@ -53,7 +53,7 @@ export type StringKind = 'url' | 'path' | 'library' | 'text'
 export function classifyString(s: string): StringKind {
   if (/https?:\/\/|wss?:\/\//i.test(s)) return 'url'
   if (/\.(dll|so(\.\d+)*|dylib|sys)\b/i.test(s)) return 'library'
-  // Rust strings aren't NUL-terminated, so a path is often glued onto the end of other text —
+  // Rust strings aren't NUL-terminated, so a path is often glued onto the end of other text:
   // match anywhere in the string, not only at the start.
   if (
     /[A-Za-z]:\\\w|^\\\\|~[\\/]|\/(usr|etc|home|var|opt|tmp|rustc|System|Library|Applications)\//.test(s) ||

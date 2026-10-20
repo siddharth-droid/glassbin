@@ -33,7 +33,7 @@ export function sectionAt(sections: Section[], offset: number): Section | undefi
 }
 
 /**
- * Inferno colormap — perceptually uniform, readable on dark backgrounds.
+ * Inferno colormap: perceptually uniform, readable on dark backgrounds.
  * Polynomial fit by Matt Zucker; the same coefficients are used in the WebGL shader.
  */
 const C = [
@@ -56,7 +56,7 @@ export function infernoRgb(t: number): [number, number, number] {
   return [r, g, b]
 }
 
-/** Entropy (0–8) → palette position, skipping the near-black and near-white extremes. */
+/** Entropy (0 to 8) → palette position, skipping the near-black and near-white extremes. */
 export const entropyT = (e: number) => 0.06 + (e / 8) * 0.9
 export const entropyRgb = (e: number) => infernoRgb(entropyT(e))
 export const entropyColor = (e: number) => `rgb(${entropyRgb(e).join(',')})`

@@ -1,5 +1,5 @@
 /**
- * Call `onWidth` when `el` changes width — and only width. Our canvases resize their own
+ * Call `onWidth` when `el` changes width, and only width. Our canvases resize their own
  * height in response, which would otherwise re-trigger the observer ("ResizeObserver loop
  * completed with undelivered notifications"). The work is deferred to the next frame so it
  * never runs inside the observer callback. Returns a cleanup function.
