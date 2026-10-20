@@ -195,31 +195,6 @@ pre,
   animation-duration: 0.22s;
 }
 
-/* Reading progress: a heat line along the nav's bottom edge, driven by the page's own scroll
-   (CSS scroll-driven animation, no JavaScript). Browsers without support simply don't show it. */
-@supports (animation-timeline: scroll()) {
-  .landing .nav::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: -1px;
-    height: 2px;
-    background: var(--heat);
-    transform-origin: left center;
-    animation: read-progress linear both;
-    animation-timeline: scroll(root block);
-  }
-}
-@keyframes read-progress {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
-}
-
 /* ── landing ───────────────────────────────────────── */
 
 .hero,
@@ -243,7 +218,8 @@ pre,
 }
 .hero h1 {
   margin: 0;
-  font: 500 clamp(38px, 4.6vw, 64px) / 1 var(--mono);
+  /* Martian Mono's descenders (g, y) reach into the next line below a 1.15 line-height */
+  font: 500 clamp(38px, 4.6vw, 64px) / 1.15 var(--mono);
   font-stretch: 75%;
   letter-spacing: -0.045em;
   text-wrap: balance;
@@ -384,7 +360,7 @@ pre,
 }
 .block-head h2 {
   margin: 0;
-  font: 500 clamp(28px, 3.4vw, 42px) / 1.05 var(--mono);
+  font: 500 clamp(28px, 3.4vw, 42px) / 1.15 var(--mono);
   font-stretch: 75%;
   letter-spacing: -0.035em;
 }
