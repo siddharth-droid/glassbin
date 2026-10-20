@@ -31,7 +31,7 @@ export function Landing({ preview, dragging, onOpen, onSample }: Props) {
           glassbin
         </a>
         <nav aria-label="Sections">
-          <a href="#report">What you get</a>
+          <a href="#what-you-get">What you get</a>
           <a href="#privacy">Privacy</a>
           <a href="#cli">CLI</a>
           <a href={REPO_URL}>Source</a>
@@ -77,7 +77,7 @@ export function Landing({ preview, dragging, onOpen, onSample }: Props) {
         </p>
       </section>
 
-      <section className="block" id="report">
+      <section className="block" id="what-you-get">
         <div className="block-head">
           <h2>A report you can act on</h2>
           <p>

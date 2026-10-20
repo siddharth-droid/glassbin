@@ -65,6 +65,10 @@ export function ReportHeader({ name, report, hashes, verdict, ms }: HeaderProps)
         >
           Look up on VirusTotal ↗
         </a>
+        <p className="hash-note">
+          “Not found” means VirusTotal has never seen this exact file, which is normal for new or personal builds. It
+          isn’t a clean result. Uploading a file there shares it with security vendors, so don’t upload anything private.
+        </p>
       </div>
     </header>
   )

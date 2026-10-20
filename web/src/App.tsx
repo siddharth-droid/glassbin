@@ -12,6 +12,11 @@ type View =
   | { kind: 'report'; name: string; analysis: Analysis }
   | { kind: 'error'; message: string }
 
+/** Give an open report its own history entry, so the browser's Back button closes it. */
+function pushReport() {
+  if (!history.state?.report) history.pushState({ report: true }, '', '#file')
+}
+
 export default function App() {
   const [view, setView] = useState<View>({ kind: 'landing' })
   const [preview, setPreview] = useState<Preview | null>(null)
@@ -36,6 +41,10 @@ export default function App() {
 
   // Switch views inside a View Transition (a native crossfade) where the browser supports it.
   // `flushSync` makes React render synchronously, so the browser can snapshot the new view.
+  // The current view's kind, readable from event listeners without re-subscribing.
+  const viewRef = useRef<View['kind']>('landing')
+  viewRef.current = view.kind
+
   const show = useCallback((next: View) => {
     const apply = () => {
       flushSync(() => setView(next))
@@ -58,7 +67,7 @@ export default function App() {
       try {
         const analysis = await analyzeFile(file)
         show({ kind: 'report', name, analysis })
-        if (location.hash !== '#report') history.pushState(null, '', '#report')
+        pushReport()
       } catch (e) {
         const message =
           e instanceof AnalysisError
@@ -72,7 +81,11 @@ export default function App() {
 
   // Browser back from a report returns to the landing page.
   useEffect(() => {
-    const onPop = () => location.hash !== '#report' && show({ kind: 'landing' })
+    // Only leaving a report is a "page" change. In-page links (#cli, #privacy) also fire
+    // popstate, and must be left alone so the browser can scroll to them.
+    const onPop = () => {
+      if (!history.state?.report && viewRef.current === 'report') show({ kind: 'landing' })
+    }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
   }, [show])
@@ -115,7 +128,7 @@ export default function App() {
     // The previewed sample is already analyzed; reuse it.
     if (preview?.name === file) {
       show({ kind: 'report', name: file, analysis: preview.analysis })
-      if (location.hash !== '#report') history.pushState(null, '', '#report')
+      pushReport()
       return
     }
     const res = await fetch(sampleUrl(file))
@@ -123,7 +136,7 @@ export default function App() {
     openFile(file, await res.blob())
   }
   const home = () => {
-    if (location.hash === '#report') history.back()
+    if (history.state?.report) history.back()
     else show({ kind: 'landing' })
   }
 
