@@ -81,10 +81,11 @@ export default function App() {
 
   // Browser back from a report returns to the landing page.
   useEffect(() => {
-    // Only leaving a report is a "page" change. In-page links (#cli, #privacy) also fire
-    // popstate, and must be left alone so the browser can scroll to them.
+    // Going back past a report (or an error shown over one) returns to the landing page.
+    // In-page links (#cli, #privacy) also fire popstate while on the landing page; those are
+    // left alone so the browser can scroll to them.
     const onPop = () => {
-      if (!history.state?.report && viewRef.current === 'report') show({ kind: 'landing' })
+      if (!history.state?.report && viewRef.current !== 'landing') show({ kind: 'landing' })
     }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
